@@ -1,9 +1,13 @@
 import { useEffect, useState } from 'react'
 import { init } from '@nimiq/mini-app-sdk'
 
+type Screen = 'home' | 'create' | 'circle'
+
 function App() {
-  const [status, setStatus] = useState('Connecting to Nimiq Pay...')
+  const [screen, setScreen] = useState<Screen>('home')
+  const [providerReady, setProviderReady] = useState(false)
   const [consensus, setConsensus] = useState<boolean | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -20,14 +24,14 @@ function App() {
         if (cancelled) return
 
         setConsensus(isConsensusEstablished)
-        setStatus('Nimiq provider connected')
-      } catch (error) {
+        setProviderReady(true)
+      } catch (err) {
         if (cancelled) return
 
-        setStatus(
-          error instanceof Error
-            ? error.message
-            : String(error),
+        setError(
+          err instanceof Error
+            ? err.message
+            : String(err),
         )
       }
     }
@@ -40,18 +44,317 @@ function App() {
   }, [])
 
   return (
-    <main>
-      <h1>NimCircle</h1>
+    <div className="min-h-screen bg-[#f7f8f5] text-[#162018]">
+      <header className="sticky top-0 z-20 border-b border-black/5 bg-[#f7f8f5]/90 backdrop-blur">
+        <div className="mx-auto flex h-16 max-w-xl items-center justify-between px-5">
+          <button
+            onClick={() => setScreen('home')}
+            className="flex items-center gap-2"
+          >
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#c7f36b] font-bold text-[#162018]">
+              N
+            </div>
 
-      <p>{status}</p>
+            <span className="text-lg font-bold tracking-tight">
+              NimCircle
+            </span>
+          </button>
 
-      {consensus !== null && (
-        <p>
-          Nimiq consensus:{' '}
-          {consensus ? 'Established' : 'Not established'}
+          <div
+            className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium ${
+              providerReady
+                ? 'bg-[#e5f7d0] text-[#38611d]'
+                : 'bg-black/5 text-black/50'
+            }`}
+          >
+            <span
+              className={`h-2 w-2 rounded-full ${
+                providerReady
+                  ? 'bg-[#65a936]'
+                  : 'bg-black/30'
+              }`}
+            />
+
+            {providerReady ? 'Connected' : 'Connecting'}
+          </div>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-xl px-5 pb-10">
+        {screen === 'home' && (
+          <HomeScreen
+            onCreate={() => setScreen('create')}
+          />
+        )}
+
+        {screen === 'create' && (
+          <CreateScreen
+            onBack={() => setScreen('home')}
+            onCreated={() => setScreen('circle')}
+          />
+        )}
+
+        {screen === 'circle' && (
+          <CircleScreen
+            onBack={() => setScreen('home')}
+          />
+        )}
+
+        {error && (
+          <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            <p className="font-semibold">
+              Nimiq Pay connection unavailable
+            </p>
+
+            <p className="mt-1 opacity-80">
+              {error}
+            </p>
+          </div>
+        )}
+
+        {consensus === false && (
+          <div className="mt-6 rounded-2xl bg-amber-50 p-4 text-sm text-amber-800">
+            Nimiq is still synchronizing. Payments will become
+            available once consensus is established.
+          </div>
+        )}
+      </main>
+    </div>
+  )
+}
+
+function HomeScreen({
+  onCreate,
+}: {
+  onCreate: () => void
+}) {
+  return (
+    <section className="pt-10">
+      <div className="overflow-hidden rounded-[2rem] bg-[#162018] p-7 text-white shadow-xl">
+        <div className="mb-10 flex items-center justify-between">
+          <span className="rounded-full bg-white/10 px-3 py-1.5 text-xs font-medium">
+            Shared goals
+          </span>
+
+          <span className="text-2xl">◎</span>
+        </div>
+
+        <h1 className="max-w-sm text-4xl font-bold leading-tight tracking-tight">
+          Build something together.
+        </h1>
+
+        <p className="mt-4 max-w-sm text-base leading-7 text-white/65">
+          Create a shared goal and let everyone contribute
+          NIM until you reach it.
         </p>
-      )}
-    </main>
+
+        <button
+          onClick={onCreate}
+          className="mt-8 min-h-12 w-full rounded-2xl bg-[#c7f36b] px-5 font-bold text-[#162018] transition-transform active:scale-[0.98]"
+        >
+          Create a Circle
+        </button>
+      </div>
+
+      <div className="mt-8">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-bold">
+            Your circles
+          </h2>
+
+          <span className="text-sm text-black/40">
+            Coming soon
+          </span>
+        </div>
+
+        <div className="rounded-3xl border border-dashed border-black/10 bg-white/50 p-8 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-black/5 text-xl">
+            ◎
+          </div>
+
+          <h3 className="mt-4 font-semibold">
+            No circles yet
+          </h3>
+
+          <p className="mt-1 text-sm leading-6 text-black/45">
+            Create your first shared goal and invite
+            your friends to contribute.
+          </p>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function CreateScreen({
+  onBack,
+  onCreated,
+}: {
+  onBack: () => void
+  onCreated: () => void
+}) {
+  return (
+    <section className="pt-7">
+      <button
+        onClick={onBack}
+        className="mb-7 min-h-11 text-sm font-medium text-black/50"
+      >
+        ← Back
+      </button>
+
+      <h1 className="text-3xl font-bold tracking-tight">
+        Create a Circle
+      </h1>
+
+      <p className="mt-2 text-sm leading-6 text-black/50">
+        Set a goal, choose the target, and invite people
+        to help you reach it.
+      </p>
+
+      <div className="mt-8 space-y-5">
+        <label className="block">
+          <span className="mb-2 block text-sm font-semibold">
+            Goal name
+          </span>
+
+          <input
+            type="text"
+            placeholder="e.g. Beach trip"
+            className="h-14 w-full rounded-2xl border border-black/10 bg-white px-4 outline-none transition focus:border-[#7fae38] focus:ring-4 focus:ring-[#c7f36b]/30"
+          />
+        </label>
+
+        <label className="block">
+          <span className="mb-2 block text-sm font-semibold">
+            Description
+          </span>
+
+          <textarea
+            placeholder="What are you saving for?"
+            rows={3}
+            className="w-full resize-none rounded-2xl border border-black/10 bg-white px-4 py-4 outline-none transition focus:border-[#7fae38] focus:ring-4 focus:ring-[#c7f36b]/30"
+          />
+        </label>
+
+        <label className="block">
+          <span className="mb-2 block text-sm font-semibold">
+            Target amount
+          </span>
+
+          <div className="relative">
+            <input
+              type="number"
+              min="1"
+              placeholder="500"
+              className="h-14 w-full rounded-2xl border border-black/10 bg-white px-4 pr-16 outline-none transition focus:border-[#7fae38] focus:ring-4 focus:ring-[#c7f36b]/30"
+            />
+
+            <span className="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-black/40">
+              NIM
+            </span>
+          </div>
+        </label>
+
+        <label className="block">
+          <span className="mb-2 block text-sm font-semibold">
+            Deadline
+          </span>
+
+          <input
+            type="date"
+            className="h-14 w-full rounded-2xl border border-black/10 bg-white px-4 outline-none transition focus:border-[#7fae38] focus:ring-4 focus:ring-[#c7f36b]/30"
+          />
+        </label>
+
+        <button
+          onClick={onCreated}
+          className="min-h-12 w-full rounded-2xl bg-[#162018] px-5 font-bold text-white transition-transform active:scale-[0.98]"
+        >
+          Create Circle
+        </button>
+      </div>
+    </section>
+  )
+}
+
+function CircleScreen({
+  onBack,
+}: {
+  onBack: () => void
+}) {
+  return (
+    <section className="pt-7">
+      <button
+        onClick={onBack}
+        className="mb-7 min-h-11 text-sm font-medium text-black/50"
+      >
+        ← Back
+      </button>
+
+      <div className="rounded-[2rem] bg-white p-6 shadow-sm">
+        <span className="rounded-full bg-[#e5f7d0] px-3 py-1.5 text-xs font-semibold text-[#38611d]">
+          Active goal
+        </span>
+
+        <h1 className="mt-5 text-3xl font-bold tracking-tight">
+          Beach Trip
+        </h1>
+
+        <p className="mt-2 text-sm leading-6 text-black/50">
+          Saving together for our next adventure.
+        </p>
+
+        <div className="mt-8">
+          <div className="flex items-end justify-between">
+            <div>
+              <p className="text-3xl font-bold">
+                0 NIM
+              </p>
+
+              <p className="mt-1 text-sm text-black/40">
+                raised
+              </p>
+            </div>
+
+            <p className="text-sm font-semibold text-black/50">
+              of 500 NIM
+            </p>
+          </div>
+
+          <div className="mt-4 h-3 overflow-hidden rounded-full bg-black/5">
+            <div
+              className="h-full rounded-full bg-[#c7f36b]"
+              style={{ width: '0%' }}
+            />
+          </div>
+
+          <p className="mt-3 text-right text-xs font-medium text-black/40">
+            0% funded
+          </p>
+        </div>
+
+        <button className="mt-8 min-h-12 w-full rounded-2xl bg-[#c7f36b] font-bold text-[#162018]">
+          Contribute NIM
+        </button>
+      </div>
+
+      <div className="mt-6 rounded-3xl border border-black/5 bg-white p-6">
+        <div className="flex items-center justify-between">
+          <h2 className="font-bold">
+            Contributors
+          </h2>
+
+          <span className="text-sm text-black/40">
+            0 people
+          </span>
+        </div>
+
+        <p className="mt-6 text-center text-sm text-black/40">
+          Contributions will appear here once the goal
+          receives NIM.
+        </p>
+      </div>
+    </section>
   )
 }
 
