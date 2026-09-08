@@ -1,11 +1,19 @@
 import { useEffect, useState } from 'react'
 import { getNimiq } from './lib/nimiq'
 import { useWallet } from './hooks/useWallet'
+import type { Circle } from './types/circle'
 
 type Screen = 'home' | 'create' | 'circle'
 
+function createCircleId() {
+  return `circle_${Date.now()}_${Math.random()
+    .toString(36)
+    .slice(2, 10)}`
+}
+
 function App() {
   const [screen, setScreen] = useState<Screen>('home')
+  const [circle, setCircle] = useState<Circle | null>(null)
 
   const {
     address,
@@ -42,7 +50,7 @@ function App() {
       }
     }
 
-    checkProvider()
+    void checkProvider()
 
     return () => {
       cancelled = true
@@ -50,6 +58,11 @@ function App() {
   }, [])
 
   const connectionError = error || walletError
+
+  function handleCircleCreated(newCircle: Circle) {
+    setCircle(newCircle)
+    setScreen('circle')
+  }
 
   return (
     <div className="min-h-screen bg-[#f7f8f5] text-[#162018]">
@@ -98,7 +111,9 @@ function App() {
         {screen === 'home' && (
           <HomeScreen
             address={address}
+            circle={circle}
             onCreate={() => setScreen('create')}
+            onOpenCircle={() => setScreen('circle')}
           />
         )}
 
@@ -106,12 +121,13 @@ function App() {
           <CreateScreen
             address={address}
             onBack={() => setScreen('home')}
-            onCreated={() => setScreen('circle')}
+            onCreated={handleCircleCreated}
           />
         )}
 
-        {screen === 'circle' && (
+        {screen === 'circle' && circle && (
           <CircleScreen
+            circle={circle}
             address={address}
             onBack={() => setScreen('home')}
           />
@@ -123,7 +139,7 @@ function App() {
               Nimiq Pay connection unavailable
             </p>
 
-            <p className="mt-1 break-words opacity-80">
+            <p className="mt-1 wrap-break-word opacity-80">
               {connectionError}
             </p>
           </div>
@@ -142,14 +158,18 @@ function App() {
 
 function HomeScreen({
   address,
+  circle,
   onCreate,
+  onOpenCircle,
 }: {
   address: string | null
+  circle: Circle | null
   onCreate: () => void
+  onOpenCircle: () => void
 }) {
   return (
     <section className="pt-10">
-      <div className="overflow-hidden rounded-[2rem] bg-[#162018] p-7 text-white shadow-xl">
+      <div className="overflow-hidden rounded-4xl bg-[#162018] p-7 text-white shadow-xl">
         <div className="mb-10 flex items-center justify-between">
           <span className="rounded-full bg-white/10 px-3 py-1.5 text-xs font-medium">
             Shared goals
@@ -182,25 +202,65 @@ function HomeScreen({
             Your circles
           </h2>
 
-          <span className="text-sm text-black/40">
-            Coming soon
-          </span>
+          {circle && (
+            <span className="text-sm text-black/40">
+              1 circle
+            </span>
+          )}
         </div>
 
-        <div className="rounded-3xl border border-dashed border-black/10 bg-white/50 p-8 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-black/5 text-xl">
-            ◎
+        {circle ? (
+          <button
+            onClick={onOpenCircle}
+            className="w-full rounded-3xl border border-black/5 bg-white p-5 text-left shadow-sm transition-transform active:scale-[0.99]"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <span className="rounded-full bg-[#e5f7d0] px-2.5 py-1 text-xs font-semibold text-[#38611d]">
+                  Active goal
+                </span>
+
+                <h3 className="mt-4 text-lg font-bold">
+                  {circle.name}
+                </h3>
+
+                <p className="mt-1 line-clamp-2 text-sm leading-6 text-black/45">
+                  {circle.description ||
+                    'No description provided.'}
+                </p>
+              </div>
+
+              <span className="text-lg text-black/30">
+                →
+              </span>
+            </div>
+
+            <div className="mt-5 flex items-center justify-between border-t border-black/5 pt-4">
+              <span className="text-sm font-semibold">
+                0 NIM raised
+              </span>
+
+              <span className="text-sm text-black/40">
+                of {circle.targetAmount} NIM
+              </span>
+            </div>
+          </button>
+        ) : (
+          <div className="rounded-3xl border border-dashed border-black/10 bg-white/50 p-8 text-center">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-black/5 text-xl">
+              ◎
+            </div>
+
+            <h3 className="mt-4 font-semibold">
+              No circles yet
+            </h3>
+
+            <p className="mt-1 text-sm leading-6 text-black/45">
+              Create your first shared goal and invite your
+              friends to contribute.
+            </p>
           </div>
-
-          <h3 className="mt-4 font-semibold">
-            No circles yet
-          </h3>
-
-          <p className="mt-1 text-sm leading-6 text-black/45">
-            Create your first shared goal and invite your
-            friends to contribute.
-          </p>
-        </div>
+        )}
       </div>
     </section>
   )
@@ -213,8 +273,91 @@ function CreateScreen({
 }: {
   address: string | null
   onBack: () => void
-  onCreated: () => void
+  onCreated: (circle: Circle) => void
 }) {
+  const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
+  const [targetAmount, setTargetAmount] = useState('')
+  const [deadline, setDeadline] = useState('')
+  const [formError, setFormError] = useState<string | null>(
+    null,
+  )
+
+  function handleSubmit(
+    event: React.FormEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault()
+    setFormError(null)
+
+    const trimmedName = name.trim()
+    const trimmedDescription = description.trim()
+    const target = Number(targetAmount)
+
+    if (!address) {
+      setFormError(
+        'Your NIM wallet is not connected yet.',
+      )
+      return
+    }
+
+    if (!trimmedName) {
+      setFormError('Give your Circle a name.')
+      return
+    }
+
+    if (trimmedName.length > 80) {
+      setFormError(
+        'Circle names must be 80 characters or less.',
+      )
+      return
+    }
+
+    if (!Number.isFinite(target) || target <= 0) {
+      setFormError(
+        'Enter a target amount greater than 0 NIM.',
+      )
+      return
+    }
+
+    if (target > 21_000_000_000) {
+      setFormError(
+        'That target amount is too large.',
+      )
+      return
+    }
+
+    if (!deadline) {
+      setFormError('Choose a deadline.')
+      return
+    }
+
+    const deadlineDate = new Date(`${deadline}T23:59:59`)
+    const now = new Date()
+
+    if (
+      Number.isNaN(deadlineDate.getTime()) ||
+      deadlineDate <= now
+    ) {
+      setFormError(
+        'The deadline must be a future date.',
+      )
+      return
+    }
+
+    const newCircle: Circle = {
+      id: createCircleId(),
+      name: trimmedName,
+      description: trimmedDescription,
+      targetAmount: target,
+      deadline,
+      recipient: address,
+      creator: address,
+      createdAt: new Date().toISOString(),
+    }
+
+    onCreated(newCircle)
+  }
+
   return (
     <section className="pt-7">
       <button
@@ -245,7 +388,16 @@ function CreateScreen({
         </div>
       )}
 
-      <div className="mt-8 space-y-5">
+      {formError && (
+        <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {formError}
+        </div>
+      )}
+
+      <form
+        onSubmit={handleSubmit}
+        className="mt-8 space-y-5"
+      >
         <label className="block">
           <span className="mb-2 block text-sm font-semibold">
             Goal name
@@ -253,7 +405,12 @@ function CreateScreen({
 
           <input
             type="text"
+            value={name}
+            onChange={(event) =>
+              setName(event.target.value)
+            }
             placeholder="e.g. Beach trip"
+            maxLength={80}
             className="h-14 w-full rounded-2xl border border-black/10 bg-white px-4 outline-none transition focus:border-[#7fae38] focus:ring-4 focus:ring-[#c7f36b]/30"
           />
         </label>
@@ -264,8 +421,13 @@ function CreateScreen({
           </span>
 
           <textarea
+            value={description}
+            onChange={(event) =>
+              setDescription(event.target.value)
+            }
             placeholder="What are you saving for?"
             rows={3}
+            maxLength={300}
             className="w-full resize-none rounded-2xl border border-black/10 bg-white px-4 py-4 outline-none transition focus:border-[#7fae38] focus:ring-4 focus:ring-[#c7f36b]/30"
           />
         </label>
@@ -279,6 +441,11 @@ function CreateScreen({
             <input
               type="number"
               min="1"
+              step="0.00001"
+              value={targetAmount}
+              onChange={(event) =>
+                setTargetAmount(event.target.value)
+              }
               placeholder="500"
               className="h-14 w-full rounded-2xl border border-black/10 bg-white px-4 pr-16 outline-none transition focus:border-[#7fae38] focus:ring-4 focus:ring-[#c7f36b]/30"
             />
@@ -296,29 +463,40 @@ function CreateScreen({
 
           <input
             type="date"
+            value={deadline}
+            min={new Date()
+              .toISOString()
+              .split('T')[0]}
+            onChange={(event) =>
+              setDeadline(event.target.value)
+            }
             className="h-14 w-full rounded-2xl border border-black/10 bg-white px-4 outline-none transition focus:border-[#7fae38] focus:ring-4 focus:ring-[#c7f36b]/30"
           />
         </label>
 
         <button
-          onClick={onCreated}
+          type="submit"
           disabled={!address}
           className="min-h-12 w-full rounded-2xl bg-[#162018] px-5 font-bold text-white transition-transform active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
         >
           Create Circle
         </button>
-      </div>
+      </form>
     </section>
   )
 }
 
 function CircleScreen({
+  circle,
   address,
   onBack,
 }: {
+  circle: Circle
   address: string | null
   onBack: () => void
 }) {
+  const target = circle.targetAmount
+
   return (
     <section className="pt-7">
       <button
@@ -328,17 +506,18 @@ function CircleScreen({
         ← Back
       </button>
 
-      <div className="rounded-[2rem] bg-white p-6 shadow-sm">
+      <div className="rounded-4xl bg-white p-6 shadow-sm">
         <span className="rounded-full bg-[#e5f7d0] px-3 py-1.5 text-xs font-semibold text-[#38611d]">
           Active goal
         </span>
 
         <h1 className="mt-5 text-3xl font-bold tracking-tight">
-          Beach Trip
+          {circle.name}
         </h1>
 
         <p className="mt-2 text-sm leading-6 text-black/50">
-          Saving together for our next adventure.
+          {circle.description ||
+            'Saving together toward a shared goal.'}
         </p>
 
         <div className="mt-8">
@@ -354,7 +533,7 @@ function CircleScreen({
             </div>
 
             <p className="text-sm font-semibold text-black/50">
-              of 500 NIM
+              of {target} NIM
             </p>
           </div>
 
@@ -370,7 +549,9 @@ function CircleScreen({
           </p>
         </div>
 
-        <button className="mt-8 min-h-12 w-full rounded-2xl bg-[#c7f36b] font-bold text-[#162018]">
+        <button
+          className="mt-8 min-h-12 w-full rounded-2xl bg-[#c7f36b] font-bold text-[#162018]"
+        >
           Contribute NIM
         </button>
       </div>
@@ -386,19 +567,38 @@ function CircleScreen({
           </span>
         </div>
 
+        <div className="mt-5 space-y-3 text-sm">
+          <div className="flex items-center justify-between rounded-2xl bg-black/[0.03] p-3">
+            <span className="text-black/50">
+              Deadline
+            </span>
+
+            <span className="font-semibold">
+              {new Date(
+                `${circle.deadline}T00:00:00`,
+              ).toLocaleDateString()}
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between rounded-2xl bg-black/[0.03] p-3">
+            <span className="text-black/50">
+              Recipient
+            </span>
+
+            <span className="max-w-[180px] truncate font-mono text-xs font-semibold">
+              {circle.recipient}
+            </span>
+          </div>
+        </div>
+
         {address && (
-          <p className="mt-4 text-xs text-black/35">
-            Circle recipient:{' '}
+          <p className="mt-5 text-xs text-black/35">
+            Your wallet:{' '}
             <span className="font-mono">
               {address.slice(0, 8)}...{address.slice(-6)}
             </span>
           </p>
         )}
-
-        <p className="mt-6 text-center text-sm text-black/40">
-          Contributions will appear here once the goal
-          receives NIM.
-        </p>
       </div>
     </section>
   )
