@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { loadCircle, saveCircle } from './lib/storage'
 import { getNimiq } from './lib/nimiq'
 import { useWallet } from './hooks/useWallet'
 import type { Circle } from './types/circle'
@@ -13,7 +14,7 @@ function createCircleId() {
 
 function App() {
   const [screen, setScreen] = useState<Screen>('home')
-  const [circle, setCircle] = useState<Circle | null>(null)
+  const [circle, setCircle] = useState<Circle | null>(() => loadCircle())
 
   const {
     address,
@@ -59,7 +60,14 @@ function App() {
 
   const connectionError = error || walletError
 
+  useEffect(() => {
+    if (circle) {
+      saveCircle(circle)
+    }
+  }, [circle])
+
   function handleCircleCreated(newCircle: Circle) {
+    saveCircle(newCircle)
     setCircle(newCircle)
     setScreen('circle')
   }
