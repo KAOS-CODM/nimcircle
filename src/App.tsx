@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import {
-  addCircle,
   loadCircles,
   saveCircles,
 } from './lib/storage'
@@ -18,15 +17,12 @@ function createCircleId() {
 
 function App() {
   const [screen, setScreen] = useState<Screen>('home')
-  const [circles, setCircles] = useState<Circle[]>([])
-  const [activeCircleId, setActiveCircleId] = useState<
-    string | null
-  >(null)
 
   const {
     address,
     loading: walletLoading,
     error: walletError,
+    connect,
   } = useWallet()
 
   const [providerReady, setProviderReady] = useState(false)
@@ -69,39 +65,180 @@ function App() {
 
   const connectionError = error || walletError
 
+  return (
+    <div className="min-h-screen bg-[#f7f8f5] text-[#162018]">
+      <header className="sticky top-0 z-20 border-b border-black/5 bg-[#f7f8f5]/90 backdrop-blur">
+        <div className="mx-auto flex h-16 max-w-xl items-center justify-between px-5">
+          <button
+            onClick={() => setScreen('home')}
+            className="flex items-center gap-2"
+          >
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#c7f36b] font-bold text-[#162018]">
+              N
+            </div>
+
+            <span className="text-lg font-bold tracking-tight">
+              NimCircle
+            </span>
+          </button>
+
+          {address ? (
+            <div className="flex items-center gap-2 rounded-full bg-[#e5f7d0] px-3 py-1.5 text-xs font-medium text-[#38611d]">
+              <span className="h-2 w-2 rounded-full bg-[#65a936]" />
+
+              {address.slice(0, 6)}...
+              {address.slice(-4)}
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 rounded-full bg-black/5 px-3 py-1.5 text-xs font-medium text-black/50">
+              <span className="h-2 w-2 rounded-full bg-black/30" />
+
+              {walletLoading
+                ? 'Connecting'
+                : providerReady
+                  ? 'Not connected'
+                  : 'Loading'}
+            </div>
+          )}
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-xl px-5 pb-10">
+        {!address ? (
+          <ConnectWalletScreen
+            providerReady={providerReady}
+            loading={walletLoading}
+            error={walletError}
+            onConnect={connect}
+          />
+        ) : (
+          <ConnectedApp
+            key={address}
+            address={address}
+            screen={screen}
+            setScreen={setScreen}
+          />
+        )}
+
+        {connectionError && !walletError && (
+          <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            <p className="font-semibold">
+              Nimiq Pay connection unavailable
+            </p>
+
+            <p className="mt-1 wrap-break-word opacity-80">
+              {connectionError}
+            </p>
+          </div>
+        )}
+
+        {consensus === false && (
+          <div className="mt-6 rounded-2xl bg-amber-50 p-4 text-sm text-amber-800">
+            Nimiq is still synchronizing. Payments will
+            become available once consensus is established.
+          </div>
+        )}
+      </main>
+    </div>
+  )
+}
+
+function ConnectWalletScreen({
+  providerReady,
+  loading,
+  error,
+  onConnect,
+}: {
+  providerReady: boolean
+  loading: boolean
+  error: string | null
+  onConnect: () => void
+}) {
+  return (
+    <section className="pt-10">
+      <div className="overflow-hidden rounded-4xl bg-[#162018] p-7 text-white shadow-xl">
+        <div className="mb-10 flex items-center justify-between">
+          <span className="rounded-full bg-white/10 px-3 py-1.5 text-xs font-medium">
+            Shared goals
+          </span>
+
+          <span className="text-2xl">◎</span>
+        </div>
+
+        <h1 className="max-w-sm text-4xl font-bold leading-tight tracking-tight">
+          Build something together.
+        </h1>
+
+        <p className="mt-4 max-w-sm text-base leading-7 text-white/65">
+          Create a shared goal and let everyone contribute
+          NIM until you reach it.
+        </p>
+
+        <button
+          onClick={onConnect}
+          disabled={!providerReady || loading}
+          className="mt-8 min-h-12 w-full rounded-2xl bg-[#c7f36b] px-5 font-bold text-[#162018] transition-transform active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {loading
+            ? 'Connecting...'
+            : providerReady
+              ? 'Connect NIM Wallet'
+              : 'Loading NimCircle...'}
+        </button>
+      </div>
+
+      <div className="mt-6 rounded-3xl border border-black/5 bg-white p-6">
+        <h2 className="font-bold">
+          Your wallet stays yours
+        </h2>
+
+        <p className="mt-2 text-sm leading-6 text-black/50">
+          NimCircle never receives or stores your private
+          keys. Nimiq Pay handles wallet access and asks
+          for your approval when needed.
+        </p>
+      </div>
+
+      {error && (
+        <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <p className="font-semibold">
+            Wallet connection failed
+          </p>
+
+          <p className="mt-1 wrap-break-word opacity-80">
+            {error}
+          </p>
+        </div>
+      )}
+    </section>
+  )
+}
+
+function ConnectedApp({
+  address,
+  screen,
+  setScreen,
+}: {
+  address: string
+  screen: Screen
+  setScreen: (screen: Screen) => void
+}) {
+  const [circles, setCircles] = useState<Circle[]>(() =>
+    loadCircles(address),
+  )
+
+  const [activeCircleId, setActiveCircleId] =
+    useState<string | null>(() => {
+      const storedCircles = loadCircles(address)
+
+      return storedCircles[0]?.id ?? null
+    })
+
   useEffect(() => {
-    if (!address) {
-      setCircles([])
-      setActiveCircleId(null)
-      return
-    }
-
-    const storedCircles = loadCircles(address)
-
-    setCircles(storedCircles)
-
-    if (storedCircles.length > 0) {
-      setActiveCircleId(storedCircles[0].id)
-    } else {
-      setActiveCircleId(null)
-    }
-  }, [address])
-
-  useEffect(() => {
-    if (!address) {
-      return
-    }
-
     saveCircles(address, circles)
   }, [address, circles])
 
   function handleCircleCreated(newCircle: Circle) {
-    if (!address) {
-      return
-    }
-
-    addCircle(address, newCircle)
-
     setCircles((current) => [
       ...current,
       newCircle,
@@ -122,94 +259,32 @@ function App() {
     ) ?? null
 
   return (
-    <div className="min-h-screen bg-[#f7f8f5] text-[#162018]">
-      <header className="sticky top-0 z-20 border-b border-black/5 bg-[#f7f8f5]/90 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-xl items-center justify-between px-5">
-          <button
-            onClick={() => setScreen('home')}
-            className="flex items-center gap-2"
-          >
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#c7f36b] font-bold text-[#162018]">
-              N
-            </div>
+    <>
+      {screen === 'home' && (
+        <HomeScreen
+          address={address}
+          circles={circles}
+          onCreate={() => setScreen('create')}
+          onOpenCircle={handleOpenCircle}
+        />
+      )}
 
-            <span className="text-lg font-bold tracking-tight">
-              NimCircle
-            </span>
-          </button>
+      {screen === 'create' && (
+        <CreateScreen
+          address={address}
+          onBack={() => setScreen('home')}
+          onCreated={handleCircleCreated}
+        />
+      )}
 
-          <div
-            className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium ${
-              providerReady && address
-                ? 'bg-[#e5f7d0] text-[#38611d]'
-                : 'bg-black/5 text-black/50'
-            }`}
-          >
-            <span
-              className={`h-2 w-2 rounded-full ${
-                providerReady && address
-                  ? 'bg-[#65a936]'
-                  : 'bg-black/30'
-              }`}
-            />
-
-            {walletLoading
-              ? 'Connecting'
-              : address
-                ? `${address.slice(0, 6)}...${address.slice(-4)}`
-                : providerReady
-                  ? 'Connected'
-                  : 'Connecting'}
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-xl px-5 pb-10">
-        {screen === 'home' && (
-          <HomeScreen
-            address={address}
-            circles={circles}
-            onCreate={() => setScreen('create')}
-            onOpenCircle={handleOpenCircle}
-          />
-        )}
-
-        {screen === 'create' && (
-          <CreateScreen
-            address={address}
-            onBack={() => setScreen('home')}
-            onCreated={handleCircleCreated}
-          />
-        )}
-
-        {screen === 'circle' && activeCircle && (
-          <CircleScreen
-            circle={activeCircle}
-            address={address}
-            onBack={() => setScreen('home')}
-          />
-        )}
-
-        {connectionError && (
-          <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            <p className="font-semibold">
-              Nimiq Pay connection unavailable
-            </p>
-
-            <p className="mt-1 wrap-break-word opacity-80">
-              {connectionError}
-            </p>
-          </div>
-        )}
-
-        {consensus === false && (
-          <div className="mt-6 rounded-2xl bg-amber-50 p-4 text-sm text-amber-800">
-            Nimiq is still synchronizing. Payments will
-            become available once consensus is established.
-          </div>
-        )}
-      </main>
-    </div>
+      {screen === 'circle' && activeCircle && (
+        <CircleScreen
+          circle={activeCircle}
+          address={address}
+          onBack={() => setScreen('home')}
+        />
+      )}
+    </>
   )
 }
 
@@ -666,7 +741,8 @@ function CircleScreen({
           <p className="mt-5 text-xs text-black/35">
             Your wallet:{' '}
             <span className="font-mono">
-              {address.slice(0, 8)}...{address.slice(-6)}
+              {address.slice(0, 8)}...
+              {address.slice(-6)}
             </span>
           </p>
         )}
