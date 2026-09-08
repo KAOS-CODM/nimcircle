@@ -1,10 +1,18 @@
 import { useEffect, useState } from 'react'
-import { init } from '@nimiq/mini-app-sdk'
+import { getNimiq } from './lib/nimiq'
+import { useWallet } from './hooks/useWallet'
 
 type Screen = 'home' | 'create' | 'circle'
 
 function App() {
   const [screen, setScreen] = useState<Screen>('home')
+
+  const {
+    address,
+    loading: walletLoading,
+    error: walletError,
+  } = useWallet()
+
   const [providerReady, setProviderReady] = useState(false)
   const [consensus, setConsensus] = useState<boolean | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -12,11 +20,9 @@ function App() {
   useEffect(() => {
     let cancelled = false
 
-    async function connect() {
+    async function checkProvider() {
       try {
-        const nimiq = await init({ timeout: 10_000 })
-
-        if (cancelled) return
+        const nimiq = await getNimiq()
 
         const isConsensusEstablished =
           await nimiq.isConsensusEstablished()
@@ -36,12 +42,14 @@ function App() {
       }
     }
 
-    connect()
+    checkProvider()
 
     return () => {
       cancelled = true
     }
   }, [])
+
+  const connectionError = error || walletError
 
   return (
     <div className="min-h-screen bg-[#f7f8f5] text-[#162018]">
@@ -62,20 +70,26 @@ function App() {
 
           <div
             className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium ${
-              providerReady
+              providerReady && address
                 ? 'bg-[#e5f7d0] text-[#38611d]'
                 : 'bg-black/5 text-black/50'
             }`}
           >
             <span
               className={`h-2 w-2 rounded-full ${
-                providerReady
+                providerReady && address
                   ? 'bg-[#65a936]'
                   : 'bg-black/30'
               }`}
             />
 
-            {providerReady ? 'Connected' : 'Connecting'}
+            {walletLoading
+              ? 'Connecting'
+              : address
+                ? `${address.slice(0, 6)}...${address.slice(-4)}`
+                : providerReady
+                  ? 'Connected'
+                  : 'Connecting'}
           </div>
         </div>
       </header>
@@ -83,12 +97,14 @@ function App() {
       <main className="mx-auto max-w-xl px-5 pb-10">
         {screen === 'home' && (
           <HomeScreen
+            address={address}
             onCreate={() => setScreen('create')}
           />
         )}
 
         {screen === 'create' && (
           <CreateScreen
+            address={address}
             onBack={() => setScreen('home')}
             onCreated={() => setScreen('circle')}
           />
@@ -96,26 +112,27 @@ function App() {
 
         {screen === 'circle' && (
           <CircleScreen
+            address={address}
             onBack={() => setScreen('home')}
           />
         )}
 
-        {error && (
+        {connectionError && (
           <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             <p className="font-semibold">
               Nimiq Pay connection unavailable
             </p>
 
-            <p className="mt-1 opacity-80">
-              {error}
+            <p className="mt-1 break-words opacity-80">
+              {connectionError}
             </p>
           </div>
         )}
 
         {consensus === false && (
           <div className="mt-6 rounded-2xl bg-amber-50 p-4 text-sm text-amber-800">
-            Nimiq is still synchronizing. Payments will become
-            available once consensus is established.
+            Nimiq is still synchronizing. Payments will
+            become available once consensus is established.
           </div>
         )}
       </main>
@@ -124,8 +141,10 @@ function App() {
 }
 
 function HomeScreen({
+  address,
   onCreate,
 }: {
+  address: string | null
   onCreate: () => void
 }) {
   return (
@@ -150,7 +169,8 @@ function HomeScreen({
 
         <button
           onClick={onCreate}
-          className="mt-8 min-h-12 w-full rounded-2xl bg-[#c7f36b] px-5 font-bold text-[#162018] transition-transform active:scale-[0.98]"
+          disabled={!address}
+          className="mt-8 min-h-12 w-full rounded-2xl bg-[#c7f36b] px-5 font-bold text-[#162018] transition-transform active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
         >
           Create a Circle
         </button>
@@ -177,8 +197,8 @@ function HomeScreen({
           </h3>
 
           <p className="mt-1 text-sm leading-6 text-black/45">
-            Create your first shared goal and invite
-            your friends to contribute.
+            Create your first shared goal and invite your
+            friends to contribute.
           </p>
         </div>
       </div>
@@ -187,9 +207,11 @@ function HomeScreen({
 }
 
 function CreateScreen({
+  address,
   onBack,
   onCreated,
 }: {
+  address: string | null
   onBack: () => void
   onCreated: () => void
 }) {
@@ -210,6 +232,18 @@ function CreateScreen({
         Set a goal, choose the target, and invite people
         to help you reach it.
       </p>
+
+      {address && (
+        <div className="mt-6 rounded-2xl bg-[#e5f7d0] px-4 py-3 text-sm text-[#38611d]">
+          <p className="font-semibold">
+            Circle recipient
+          </p>
+
+          <p className="mt-1 break-all font-mono text-xs opacity-80">
+            {address}
+          </p>
+        </div>
+      )}
 
       <div className="mt-8 space-y-5">
         <label className="block">
@@ -268,7 +302,8 @@ function CreateScreen({
 
         <button
           onClick={onCreated}
-          className="min-h-12 w-full rounded-2xl bg-[#162018] px-5 font-bold text-white transition-transform active:scale-[0.98]"
+          disabled={!address}
+          className="min-h-12 w-full rounded-2xl bg-[#162018] px-5 font-bold text-white transition-transform active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
         >
           Create Circle
         </button>
@@ -278,8 +313,10 @@ function CreateScreen({
 }
 
 function CircleScreen({
+  address,
   onBack,
 }: {
+  address: string | null
   onBack: () => void
 }) {
   return (
@@ -348,6 +385,15 @@ function CircleScreen({
             0 people
           </span>
         </div>
+
+        {address && (
+          <p className="mt-4 text-xs text-black/35">
+            Circle recipient:{' '}
+            <span className="font-mono">
+              {address.slice(0, 8)}...{address.slice(-6)}
+            </span>
+          </p>
+        )}
 
         <p className="mt-6 text-center text-sm text-black/40">
           Contributions will appear here once the goal
