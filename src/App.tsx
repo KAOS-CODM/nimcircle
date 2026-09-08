@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react'
-import { loadCircle, saveCircle } from './lib/storage'
+import {
+  addCircle,
+  loadCircles,
+  saveCircles,
+} from './lib/storage'
 import { getNimiq } from './lib/nimiq'
 import { useWallet } from './hooks/useWallet'
 import type { Circle } from './types/circle'
@@ -14,7 +18,10 @@ function createCircleId() {
 
 function App() {
   const [screen, setScreen] = useState<Screen>('home')
-  const [circle, setCircle] = useState<Circle | null>(() => loadCircle())
+  const [circles, setCircles] = useState<Circle[]>([])
+  const [activeCircleId, setActiveCircleId] = useState<
+    string | null
+  >(null)
 
   const {
     address,
@@ -23,7 +30,9 @@ function App() {
   } = useWallet()
 
   const [providerReady, setProviderReady] = useState(false)
-  const [consensus, setConsensus] = useState<boolean | null>(null)
+  const [consensus, setConsensus] = useState<boolean | null>(
+    null,
+  )
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -61,16 +70,56 @@ function App() {
   const connectionError = error || walletError
 
   useEffect(() => {
-    if (circle) {
-      saveCircle(circle)
+    if (!address) {
+      setCircles([])
+      setActiveCircleId(null)
+      return
     }
-  }, [circle])
+
+    const storedCircles = loadCircles(address)
+
+    setCircles(storedCircles)
+
+    if (storedCircles.length > 0) {
+      setActiveCircleId(storedCircles[0].id)
+    } else {
+      setActiveCircleId(null)
+    }
+  }, [address])
+
+  useEffect(() => {
+    if (!address) {
+      return
+    }
+
+    saveCircles(address, circles)
+  }, [address, circles])
 
   function handleCircleCreated(newCircle: Circle) {
-    saveCircle(newCircle)
-    setCircle(newCircle)
+    if (!address) {
+      return
+    }
+
+    addCircle(address, newCircle)
+
+    setCircles((current) => [
+      ...current,
+      newCircle,
+    ])
+
+    setActiveCircleId(newCircle.id)
     setScreen('circle')
   }
+
+  function handleOpenCircle(circleId: string) {
+    setActiveCircleId(circleId)
+    setScreen('circle')
+  }
+
+  const activeCircle =
+    circles.find(
+      (circle) => circle.id === activeCircleId,
+    ) ?? null
 
   return (
     <div className="min-h-screen bg-[#f7f8f5] text-[#162018]">
@@ -119,9 +168,9 @@ function App() {
         {screen === 'home' && (
           <HomeScreen
             address={address}
-            circle={circle}
+            circles={circles}
             onCreate={() => setScreen('create')}
-            onOpenCircle={() => setScreen('circle')}
+            onOpenCircle={handleOpenCircle}
           />
         )}
 
@@ -133,9 +182,9 @@ function App() {
           />
         )}
 
-        {screen === 'circle' && circle && (
+        {screen === 'circle' && activeCircle && (
           <CircleScreen
-            circle={circle}
+            circle={activeCircle}
             address={address}
             onBack={() => setScreen('home')}
           />
@@ -166,14 +215,14 @@ function App() {
 
 function HomeScreen({
   address,
-  circle,
+  circles,
   onCreate,
   onOpenCircle,
 }: {
   address: string | null
-  circle: Circle | null
+  circles: Circle[]
   onCreate: () => void
-  onOpenCircle: () => void
+  onOpenCircle: (circleId: string) => void
 }) {
   return (
     <section className="pt-10">
@@ -210,49 +259,59 @@ function HomeScreen({
             Your circles
           </h2>
 
-          {circle && (
+          {circles.length > 0 && (
             <span className="text-sm text-black/40">
-              1 circle
+              {circles.length}{' '}
+              {circles.length === 1
+                ? 'circle'
+                : 'circles'}
             </span>
           )}
         </div>
 
-        {circle ? (
-          <button
-            onClick={onOpenCircle}
-            className="w-full rounded-3xl border border-black/5 bg-white p-5 text-left shadow-sm transition-transform active:scale-[0.99]"
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <span className="rounded-full bg-[#e5f7d0] px-2.5 py-1 text-xs font-semibold text-[#38611d]">
-                  Active goal
-                </span>
+        {circles.length > 0 ? (
+          <div className="space-y-3">
+            {circles.map((circle) => (
+              <button
+                key={circle.id}
+                onClick={() =>
+                  onOpenCircle(circle.id)
+                }
+                className="w-full rounded-3xl border border-black/5 bg-white p-5 text-left shadow-sm transition-transform active:scale-[0.99]"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <span className="rounded-full bg-[#e5f7d0] px-2.5 py-1 text-xs font-semibold text-[#38611d]">
+                      Active goal
+                    </span>
 
-                <h3 className="mt-4 text-lg font-bold">
-                  {circle.name}
-                </h3>
+                    <h3 className="mt-4 text-lg font-bold">
+                      {circle.name}
+                    </h3>
 
-                <p className="mt-1 line-clamp-2 text-sm leading-6 text-black/45">
-                  {circle.description ||
-                    'No description provided.'}
-                </p>
-              </div>
+                    <p className="mt-1 line-clamp-2 text-sm leading-6 text-black/45">
+                      {circle.description ||
+                        'No description provided.'}
+                    </p>
+                  </div>
 
-              <span className="text-lg text-black/30">
-                →
-              </span>
-            </div>
+                  <span className="text-lg text-black/30">
+                    →
+                  </span>
+                </div>
 
-            <div className="mt-5 flex items-center justify-between border-t border-black/5 pt-4">
-              <span className="text-sm font-semibold">
-                0 NIM raised
-              </span>
+                <div className="mt-5 flex items-center justify-between border-t border-black/5 pt-4">
+                  <span className="text-sm font-semibold">
+                    0 NIM raised
+                  </span>
 
-              <span className="text-sm text-black/40">
-                of {circle.targetAmount} NIM
-              </span>
-            </div>
-          </button>
+                  <span className="text-sm text-black/40">
+                    of {circle.targetAmount} NIM
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
         ) : (
           <div className="rounded-3xl border border-dashed border-black/10 bg-white/50 p-8 text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-black/5 text-xl">
@@ -339,7 +398,9 @@ function CreateScreen({
       return
     }
 
-    const deadlineDate = new Date(`${deadline}T23:59:59`)
+    const deadlineDate = new Date(
+      `${deadline}T23:59:59`,
+    )
     const now = new Date()
 
     if (
@@ -472,9 +533,11 @@ function CreateScreen({
           <input
             type="date"
             value={deadline}
-            min={new Date()
-              .toISOString()
-              .split('T')[0]}
+            min={
+              new Date()
+                .toISOString()
+                .split('T')[0]
+            }
             onChange={(event) =>
               setDeadline(event.target.value)
             }

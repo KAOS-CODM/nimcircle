@@ -1,26 +1,55 @@
 import type { Circle } from '../types/circle'
 
-const CIRCLE_STORAGE_KEY = 'nimcircle:circle'
+const CIRCLE_STORAGE_PREFIX = 'nimcircle:circles:'
 
-export function saveCircle(circle: Circle) {
-  localStorage.setItem(CIRCLE_STORAGE_KEY, JSON.stringify(circle))
+function getStorageKey(address: string) {
+  return `${CIRCLE_STORAGE_PREFIX}${address.toLowerCase()}`
 }
 
-export function loadCircle(): Circle | null {
-  const stored = localStorage.getItem(CIRCLE_STORAGE_KEY)
+export function saveCircles(
+  address: string,
+  circles: Circle[],
+) {
+  localStorage.setItem(
+    getStorageKey(address),
+    JSON.stringify(circles),
+  )
+}
+
+export function loadCircles(
+  address: string,
+): Circle[] {
+  const stored = localStorage.getItem(
+    getStorageKey(address),
+  )
 
   if (!stored) {
-    return null
+    return []
   }
 
   try {
-    return JSON.parse(stored) as Circle
+    const parsed = JSON.parse(stored)
+
+    if (!Array.isArray(parsed)) {
+      return []
+    }
+
+    return parsed as Circle[]
   } catch {
-    localStorage.removeItem(CIRCLE_STORAGE_KEY)
-    return null
+    localStorage.removeItem(getStorageKey(address))
+    return []
   }
 }
 
-export function clearCircle() {
-  localStorage.removeItem(CIRCLE_STORAGE_KEY)
+export function addCircle(
+  address: string,
+  circle: Circle,
+) {
+  const circles = loadCircles(address)
+
+  saveCircles(address, [...circles, circle])
+}
+
+export function clearCircles(address: string) {
+  localStorage.removeItem(getStorageKey(address))
 }
