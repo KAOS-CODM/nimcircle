@@ -40,6 +40,11 @@ type Screen =
   | NavigationTab
   | 'circle'
 
+interface ConnectedAppProps {
+  address: string
+  user: User
+}
+
 function ProfileGate({
   address,
   children,
@@ -51,17 +56,17 @@ function ProfileGate({
   const storedUser = getUserByWallet(address)
 
   const hasMatchingSession =
-    storedSession &&
-    storedSession.walletAddress.toLowerCase() ===
+    Boolean(storedSession) &&
+    storedSession?.walletAddress.toLowerCase() ===
       address.toLowerCase() &&
-    storedUser
+    Boolean(storedUser)
 
   const [user, setUser] = useState<User | null>(
     () => storedUser,
   )
 
   const [showWelcome, setShowWelcome] = useState(
-    () => Boolean(hasMatchingSession),
+    () => hasMatchingSession,
   )
 
   useEffect(() => {
@@ -70,7 +75,9 @@ function ProfileGate({
     }
   }, [storedUser, hasMatchingSession])
 
-  function handleProfileComplete(displayName: string) {
+  function handleProfileComplete(
+    displayName: string,
+  ) {
     const newUser = createUser(
       displayName,
       address,
@@ -98,7 +105,9 @@ function ProfileGate({
       {showWelcome && (
         <WelcomeBackModal
           user={user}
-          onContinue={() => setShowWelcome(false)}
+          onContinue={() =>
+            setShowWelcome(false)
+          }
         />
       )}
     </>
@@ -108,10 +117,7 @@ function ProfileGate({
 function ConnectedApp({
   address,
   user,
-}: {
-  address: string
-  user: User
-}) {
+}: ConnectedAppProps) {
   const [screen, setScreen] =
     useState<Screen>('home')
 
@@ -126,7 +132,7 @@ function ConnectedApp({
     saveCircles(address, circles)
   }, [address, circles])
 
-  function handleCreateCircle(data: {
+  function createCircle(data: {
     name: string
     description: string
     targetAmount: number
@@ -150,21 +156,20 @@ function ConnectedApp({
       circle,
     ])
 
-    setActiveCircleId(circle.id)
-    setScreen('circle')
+    openCircle(circle.id)
   }
 
-  function handleOpenCircle(circleId: string) {
+  function openCircle(circleId: string) {
     setActiveCircleId(circleId)
     setScreen('circle')
   }
 
-  function handleHome() {
+  function goHome() {
     setActiveCircleId(null)
     setScreen('home')
   }
 
-  function handleNavigate(tab: NavigationTab) {
+  function navigateTo(tab: NavigationTab) {
     setActiveCircleId(null)
     setScreen(tab)
   }
@@ -176,11 +181,78 @@ function ConnectedApp({
 
   const isCircleView = screen === 'circle'
 
+  function renderScreen() {
+    if (screen === 'home') {
+      return (
+        <HomeView
+          userName={user.displayName}
+          circles={circles}
+          onCreateCircle={() =>
+            setScreen('create')
+          }
+          onViewCircles={() =>
+            navigateTo('circles')
+          }
+          onOpenCircle={openCircle}
+        />
+      )
+    }
+
+    if (screen === 'create') {
+      return (
+        <CreateCircleView
+          onBack={goHome}
+          onCreate={createCircle}
+        />
+      )
+    }
+
+    if (screen === 'circles') {
+      return (
+        <CirclesView
+          circles={circles}
+          onCreateCircle={() =>
+            setScreen('create')
+          }
+          onOpenCircle={openCircle}
+        />
+      )
+    }
+
+    if (screen === 'profile') {
+      return <ProfileView user={user} />
+    }
+
+    if (activeCircle) {
+      return (
+        <CircleView
+          circle={activeCircle}
+          currentAddress={address}
+          onBack={goHome}
+        />
+      )
+    }
+
+    return (
+      <HomeView
+        userName={user.displayName}
+        circles={circles}
+        onCreateCircle={() =>
+          setScreen('create')
+        }
+        onViewCircles={() =>
+          navigateTo('circles')
+        }
+        onOpenCircle={openCircle}
+      />
+    )
+  }
+
   return (
     <div className="min-h-screen bg-[#f7f8f5] text-[#162018]">
       <AppHeader
         address={address}
-        onHome={handleHome}
+        onHome={goHome}
       />
 
       <main
@@ -190,70 +262,13 @@ function ConnectedApp({
             : 'mx-auto w-full max-w-xl px-5 pb-32'
         }
       >
-        {screen === 'home' && (
-          <HomeView
-            userName={user.displayName}
-            circles={circles}
-            onCreateCircle={() =>
-              setScreen('create')
-            }
-            onViewCircles={() => {
-              setActiveCircleId(null)
-              setScreen('circles')
-            }}
-            onOpenCircle={handleOpenCircle}
-          />
-        )}
-
-        {screen === 'create' && (
-          <CreateCircleView
-            address={address}
-            onBack={handleHome}
-            onCreate={handleCreateCircle}
-          />
-        )}
-
-        {screen === 'circles' && (
-          <CirclesView
-            circles={circles}
-            onCreateCircle={() =>
-              setScreen('create')
-            }
-            onOpenCircle={handleOpenCircle}
-          />
-        )}
-        
-        {screen === 'profile' && (
-          <ProfileView user={user} />
-        )}
-
-        {screen === 'circle' && activeCircle && (
-          <CircleView
-            circle={activeCircle}
-            onBack={handleHome}
-          />
-        )}
-
-        {screen === 'circle' && !activeCircle && (
-          <HomeView
-            userName={user.displayName}
-            circles={circles}
-            onCreateCircle={() =>
-              setScreen('create')
-            }
-            onViewCircles={() => {
-              setActiveCircleId(null)
-              setScreen('circles')
-            }}
-            onOpenCircle={handleOpenCircle}
-          />
-        )}
+        {renderScreen()}
       </main>
 
       {!isCircleView && (
         <BottomNavigation
           activeTab={screen}
-          onNavigate={handleNavigate}
+          onNavigate={navigateTo}
         />
       )}
     </div>

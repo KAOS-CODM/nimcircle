@@ -1,7 +1,6 @@
 import { useState } from 'react'
 
 interface CreateCircleViewProps {
-  address: string
   onBack: () => void
   onCreate: (circle: {
     name: string
@@ -43,10 +42,17 @@ export default function CreateCircleView({
       return
     }
 
+    const deadlineTimestamp = new Date(
+      deadline,
+    ).getTime()
+
     if (
-      new Date(deadline).getTime() <= Date.now()
+      Number.isNaN(deadlineTimestamp) ||
+      deadlineTimestamp <= Date.now()
     ) {
-      setError('The deadline must be in the future.')
+      setError(
+        'The deadline must be a valid future date.',
+      )
       return
     }
 
@@ -80,8 +86,8 @@ export default function CreateCircleView({
         </h1>
 
         <p className="mt-3 text-sm leading-6 text-[#607060]">
-          Set the target and deadline. Once created, you can share
-          the Circle with everyone contributing.
+          Set the target and deadline. Once created, you can
+          share the Circle with everyone contributing.
         </p>
       </div>
 
@@ -100,7 +106,9 @@ export default function CreateCircleView({
           <input
             id="circle-name"
             value={name}
-            onChange={(event) => setName(event.target.value)}
+            onChange={(event) =>
+              setName(event.target.value)
+            }
             maxLength={80}
             placeholder="e.g. New apartment"
             className="w-full rounded-2xl border border-black/10 bg-white px-4 py-4 outline-none focus:border-[#162018]/30 focus:ring-2 focus:ring-[#dff5a8]"
