@@ -1,63 +1,223 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { getNimiq } from '../lib/nimiq'
+
+type WalletStage =
+  | 'starting'
+  | 'provider-ready'
+  | 'requesting-account'
+  | 'account-returned'
+  | 'failed'
+
+interface WalletDebug {
+  providerInitialized: boolean
+  accounts: string[]
+  accountCount: number | null
+  stage: WalletStage
+  status: string
+}
 
 interface WalletState {
   address: string | null
   loading: boolean
   error: string | null
+  debug: WalletDebug
+}
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message
+  }
+
+  if (typeof error === 'object' && error !== null) {
+    try {
+      return JSON.stringify(error, null, 2)
+    } catch {
+      return String(error)
+    }
+  }
+
+  return String(error)
 }
 
 export function useWallet() {
   const [wallet, setWallet] = useState<WalletState>({
     address: null,
-    loading: false,
+    loading: true,
     error: null,
+    debug: {
+      providerInitialized: false,
+      accounts: [],
+      accountCount: null,
+      stage: 'starting',
+      status: 'Starting wallet connection...',
+    },
   })
 
-  async function connect() {
-    setWallet((current) => ({
-      ...current,
-      loading: true,
-      error: null,
-    }))
+  const requestPromiseRef = useRef<Promise<void> | null>(null)
 
-    try {
-      const nimiq = await getNimiq()
-      const accounts = await nimiq.listAccounts()
+  const requestAccounts = useCallback(async () => {
+    if (requestPromiseRef.current) {
+      return requestPromiseRef.current
+    }
+  
+    const promise = (async () => {
+      try {
+        setWallet((current) => ({
+          ...current,
+          loading: true,
+          error: null,
+          debug: {
+            ...current.debug,
+            stage: 'requesting-account',
+            status: 'Requesting your NIM account from Nimiq Pay...',
+          },
+        }))
+  
+        const nimiq = await getNimiq()
+  
+        setWallet((current) => ({
+          ...current,
+          debug: {
+            ...current.debug,
+            providerInitialized: true,
+            stage: 'provider-ready',
+            status: 'Nimiq provider initialized successfully.',
+          },
+        }))
+  
+        const accounts = await nimiq.listAccounts()
+  
+        const safeAccounts = Array.isArray(accounts)
+          ? accounts
+          : []
+  
+        const address = safeAccounts[0] ?? null
+  
+        if (!address) {
+          setWallet({
+            address: null,
+            loading: false,
+            error: 'Nimiq Pay returned zero NIM accounts.',
+            debug: {
+              providerInitialized: true,
+              accounts: safeAccounts,
+              accountCount: safeAccounts.length,
+              stage: 'failed',
+              status:
+                'Provider initialized, but no NIM account was returned.',
+            },
+          })
+  
+          return
+        }
+  
+        setWallet({
+          address,
+          loading: false,
+          error: null,
+          debug: {
+            providerInitialized: true,
+            accounts: safeAccounts,
+            accountCount: safeAccounts.length,
+            stage: 'account-returned',
+            status: 'NIM account returned successfully.',
+          },
+        })
+      } catch (error) {
+        const message = getErrorMessage(error)
+  
+        setWallet((current) => ({
+          address: null,
+          loading: false,
+          error: message,
+          debug: {
+            ...current.debug,
+            stage: 'failed',
+            status:
+              'Account request failed. See the error below.',
+          },
+        }))
+      } finally {
+        requestPromiseRef.current = null
+      }
+    })()
+  
+    requestPromiseRef.current = promise
+  
+    return promise
+  }, [])
 
-      if (!Array.isArray(accounts)) {
+  const restoreWallet = useCallback(async () => {
+    await requestAccounts()
+  }, [requestAccounts])
+
+  const connectWallet = useCallback(async () => {
+    await requestAccounts()
+  }, [requestAccounts])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function initializeProvider() {
+      try {
+        setWallet((current) => ({
+          ...current,
+          loading: false,
+          debug: {
+            ...current.debug,
+            stage: 'starting',
+            status:
+              'Initializing Nimiq provider...',
+          },
+        }))
+
+        await getNimiq()
+
+        if (cancelled) {
+          return
+        }
+
+        setWallet((current) => ({
+          ...current,
+          debug: {
+            ...current.debug,
+            providerInitialized: true,
+            stage: 'provider-ready',
+            status:
+              'Nimiq provider is ready. Waiting for wallet connection.',
+          },
+        }))
+      } catch (error) {
+        if (cancelled) {
+          return
+        }
+
         setWallet({
           address: null,
           loading: false,
-          error: 'Unable to retrieve the NIM account.',
+          error: getErrorMessage(error),
+          debug: {
+            providerInitialized: false,
+            accounts: [],
+            accountCount: null,
+            stage: 'failed',
+            status:
+              'Nimiq provider initialization failed.',
+          },
         })
-
-        return
       }
-
-      const address = accounts[0] ?? null
-
-      setWallet({
-        address,
-        loading: false,
-        error: address
-          ? null
-          : 'No NIM account is available.',
-      })
-    } catch (error) {
-      setWallet({
-        address: null,
-        loading: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : String(error),
-      })
     }
-  }
+
+    void initializeProvider()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   return {
     ...wallet,
-    connect,
+    restoreWallet,
+    connectWallet,
   }
 }

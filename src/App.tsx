@@ -1,250 +1,156 @@
-import { useEffect, useState } from 'react'
+import {
+  useEffect,
+  useState,
+} from 'react'
+
+import type { ReactNode } from 'react'
+
+import AppHeader from './components/AppHeader'
+import BottomNavigation from './components/BottomNavigation'
+import type { NavigationTab } from './components/BottomNavigation'
+import ProfileSetup from './components/ProfileSetup'
+import WelcomeBackModal from './components/WelcomeBackModal'
+
+import ConnectWalletView from './views/Wallet/ConnectWalletView'
+import WalletRestoringView from './views/Wallet/WalletRestoringView'
+import HomeView from './views/Home/HomeView'
+import CreateCircleView from './views/CreateCircle/CreateCircleView'
+import CircleView from './views/Circle/CircleView'
+import CirclesView from './views/Circles/CirclesView'
+import ProfileView from './views/Profile/ProfileView'
+
+import { useWallet } from './hooks/useWallet'
+
 import {
   loadCircles,
   saveCircles,
 } from './lib/storage'
-import { getNimiq } from './lib/nimiq'
-import { useWallet } from './hooks/useWallet'
+
+import {
+  createUser,
+  getSession,
+  getUserByWallet,
+  saveSession,
+} from './lib/userStorage'
+
 import type { Circle } from './types/circle'
+import type { User } from './types/user'
 
-type Screen = 'home' | 'create' | 'circle'
+type Screen =
+  | NavigationTab
+  | 'circle'
 
-function createCircleId() {
-  return `circle_${Date.now()}_${Math.random()
-    .toString(36)
-    .slice(2, 10)}`
-}
+function ProfileGate({
+  address,
+  children,
+}: {
+  address: string
+  children: (user: User) => ReactNode
+}) {
+  const storedSession = getSession()
+  const storedUser = getUserByWallet(address)
 
-function App() {
-  const [screen, setScreen] = useState<Screen>('home')
+  const hasMatchingSession =
+    storedSession &&
+    storedSession.walletAddress.toLowerCase() ===
+      address.toLowerCase() &&
+    storedUser
 
-  const {
-    address,
-    loading: walletLoading,
-    error: walletError,
-    connect,
-  } = useWallet()
-
-  const [providerReady, setProviderReady] = useState(false)
-  const [consensus, setConsensus] = useState<boolean | null>(
-    null,
+  const [user, setUser] = useState<User | null>(
+    () => storedUser,
   )
-  const [error, setError] = useState<string | null>(null)
+
+  const [showWelcome, setShowWelcome] = useState(
+    () => Boolean(hasMatchingSession),
+  )
 
   useEffect(() => {
-    let cancelled = false
-
-    async function checkProvider() {
-      try {
-        const nimiq = await getNimiq()
-
-        const isConsensusEstablished =
-          await nimiq.isConsensusEstablished()
-
-        if (cancelled) return
-
-        setConsensus(isConsensusEstablished)
-        setProviderReady(true)
-      } catch (err) {
-        if (cancelled) return
-
-        setError(
-          err instanceof Error
-            ? err.message
-            : String(err),
-        )
-      }
+    if (storedUser && !hasMatchingSession) {
+      saveSession(storedUser)
     }
+  }, [storedUser, hasMatchingSession])
 
-    void checkProvider()
+  function handleProfileComplete(displayName: string) {
+    const newUser = createUser(
+      displayName,
+      address,
+    )
 
-    return () => {
-      cancelled = true
-    }
-  }, [])
+    saveSession(newUser)
 
-  const connectionError = error || walletError
+    setUser(newUser)
+    setShowWelcome(false)
+  }
+
+  if (!user) {
+    return (
+      <ProfileSetup
+        walletAddress={address}
+        onComplete={handleProfileComplete}
+      />
+    )
+  }
 
   return (
-    <div className="min-h-screen bg-[#f7f8f5] text-[#162018]">
-      <header className="sticky top-0 z-20 border-b border-black/5 bg-[#f7f8f5]/90 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-xl items-center justify-between px-5">
-          <button
-            onClick={() => setScreen('home')}
-            className="flex items-center gap-2"
-          >
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#c7f36b] font-bold text-[#162018]">
-              N
-            </div>
+    <>
+      {children(user)}
 
-            <span className="text-lg font-bold tracking-tight">
-              NimCircle
-            </span>
-          </button>
-
-          {address ? (
-            <div className="flex items-center gap-2 rounded-full bg-[#e5f7d0] px-3 py-1.5 text-xs font-medium text-[#38611d]">
-              <span className="h-2 w-2 rounded-full bg-[#65a936]" />
-
-              {address.slice(0, 6)}...
-              {address.slice(-4)}
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 rounded-full bg-black/5 px-3 py-1.5 text-xs font-medium text-black/50">
-              <span className="h-2 w-2 rounded-full bg-black/30" />
-
-              {walletLoading
-                ? 'Connecting'
-                : providerReady
-                  ? 'Not connected'
-                  : 'Loading'}
-            </div>
-          )}
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-xl px-5 pb-10">
-        {!address ? (
-          <ConnectWalletScreen
-            providerReady={providerReady}
-            loading={walletLoading}
-            error={walletError}
-            onConnect={connect}
-          />
-        ) : (
-          <ConnectedApp
-            key={address}
-            address={address}
-            screen={screen}
-            setScreen={setScreen}
-          />
-        )}
-
-        {connectionError && !walletError && (
-          <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            <p className="font-semibold">
-              Nimiq Pay connection unavailable
-            </p>
-
-            <p className="mt-1 wrap-break-word opacity-80">
-              {connectionError}
-            </p>
-          </div>
-        )}
-
-        {consensus === false && (
-          <div className="mt-6 rounded-2xl bg-amber-50 p-4 text-sm text-amber-800">
-            Nimiq is still synchronizing. Payments will
-            become available once consensus is established.
-          </div>
-        )}
-      </main>
-    </div>
-  )
-}
-
-function ConnectWalletScreen({
-  providerReady,
-  loading,
-  error,
-  onConnect,
-}: {
-  providerReady: boolean
-  loading: boolean
-  error: string | null
-  onConnect: () => void
-}) {
-  return (
-    <section className="pt-10">
-      <div className="overflow-hidden rounded-4xl bg-[#162018] p-7 text-white shadow-xl">
-        <div className="mb-10 flex items-center justify-between">
-          <span className="rounded-full bg-white/10 px-3 py-1.5 text-xs font-medium">
-            Shared goals
-          </span>
-
-          <span className="text-2xl">◎</span>
-        </div>
-
-        <h1 className="max-w-sm text-4xl font-bold leading-tight tracking-tight">
-          Build something together.
-        </h1>
-
-        <p className="mt-4 max-w-sm text-base leading-7 text-white/65">
-          Create a shared goal and let everyone contribute
-          NIM until you reach it.
-        </p>
-
-        <button
-          onClick={onConnect}
-          disabled={!providerReady || loading}
-          className="mt-8 min-h-12 w-full rounded-2xl bg-[#c7f36b] px-5 font-bold text-[#162018] transition-transform active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {loading
-            ? 'Connecting...'
-            : providerReady
-              ? 'Connect NIM Wallet'
-              : 'Loading NimCircle...'}
-        </button>
-      </div>
-
-      <div className="mt-6 rounded-3xl border border-black/5 bg-white p-6">
-        <h2 className="font-bold">
-          Your wallet stays yours
-        </h2>
-
-        <p className="mt-2 text-sm leading-6 text-black/50">
-          NimCircle never receives or stores your private
-          keys. Nimiq Pay handles wallet access and asks
-          for your approval when needed.
-        </p>
-      </div>
-
-      {error && (
-        <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          <p className="font-semibold">
-            Wallet connection failed
-          </p>
-
-          <p className="mt-1 wrap-break-word opacity-80">
-            {error}
-          </p>
-        </div>
+      {showWelcome && (
+        <WelcomeBackModal
+          user={user}
+          onContinue={() => setShowWelcome(false)}
+        />
       )}
-    </section>
+    </>
   )
 }
 
 function ConnectedApp({
   address,
-  screen,
-  setScreen,
+  user,
 }: {
   address: string
-  screen: Screen
-  setScreen: (screen: Screen) => void
+  user: User
 }) {
-  const [circles, setCircles] = useState<Circle[]>(() =>
-    loadCircles(address),
-  )
+  const [screen, setScreen] =
+    useState<Screen>('home')
 
   const [activeCircleId, setActiveCircleId] =
-    useState<string | null>(() => {
-      const storedCircles = loadCircles(address)
+    useState<string | null>(null)
 
-      return storedCircles[0]?.id ?? null
-    })
+  const [circles, setCircles] = useState<Circle[]>(
+    () => loadCircles(address),
+  )
 
   useEffect(() => {
     saveCircles(address, circles)
   }, [address, circles])
 
-  function handleCircleCreated(newCircle: Circle) {
+  function handleCreateCircle(data: {
+    name: string
+    description: string
+    targetAmount: number
+    deadline: string
+  }) {
+    const circle: Circle = {
+      id: `circle_${Date.now()}_${Math.random()
+        .toString(36)
+        .slice(2, 10)}`,
+      name: data.name,
+      description: data.description,
+      targetAmount: data.targetAmount,
+      deadline: data.deadline,
+      recipient: address,
+      creator: address,
+      createdAt: new Date().toISOString(),
+    }
+
     setCircles((current) => [
       ...current,
-      newCircle,
+      circle,
     ])
 
-    setActiveCircleId(newCircle.id)
+    setActiveCircleId(circle.id)
     setScreen('circle')
   }
 
@@ -253,502 +159,138 @@ function ConnectedApp({
     setScreen('circle')
   }
 
+  function handleHome() {
+    setActiveCircleId(null)
+    setScreen('home')
+  }
+
+  function handleNavigate(tab: NavigationTab) {
+    setActiveCircleId(null)
+    setScreen(tab)
+  }
+
   const activeCircle =
     circles.find(
       (circle) => circle.id === activeCircleId,
     ) ?? null
 
+  const isCircleView = screen === 'circle'
+
   return (
-    <>
-      {screen === 'home' && (
-        <HomeScreen
-          address={address}
-          circles={circles}
-          onCreate={() => setScreen('create')}
-          onOpenCircle={handleOpenCircle}
-        />
-      )}
+    <div className="min-h-screen bg-[#f7f8f5] text-[#162018]">
+      <AppHeader
+        address={address}
+        onHome={handleHome}
+      />
 
-      {screen === 'create' && (
-        <CreateScreen
-          address={address}
-          onBack={() => setScreen('home')}
-          onCreated={handleCircleCreated}
-        />
-      )}
-
-      {screen === 'circle' && activeCircle && (
-        <CircleScreen
-          circle={activeCircle}
-          address={address}
-          onBack={() => setScreen('home')}
-        />
-      )}
-    </>
-  )
-}
-
-function HomeScreen({
-  address,
-  circles,
-  onCreate,
-  onOpenCircle,
-}: {
-  address: string | null
-  circles: Circle[]
-  onCreate: () => void
-  onOpenCircle: (circleId: string) => void
-}) {
-  return (
-    <section className="pt-10">
-      <div className="overflow-hidden rounded-4xl bg-[#162018] p-7 text-white shadow-xl">
-        <div className="mb-10 flex items-center justify-between">
-          <span className="rounded-full bg-white/10 px-3 py-1.5 text-xs font-medium">
-            Shared goals
-          </span>
-
-          <span className="text-2xl">◎</span>
-        </div>
-
-        <h1 className="max-w-sm text-4xl font-bold leading-tight tracking-tight">
-          Build something together.
-        </h1>
-
-        <p className="mt-4 max-w-sm text-base leading-7 text-white/65">
-          Create a shared goal and let everyone contribute
-          NIM until you reach it.
-        </p>
-
-        <button
-          onClick={onCreate}
-          disabled={!address}
-          className="mt-8 min-h-12 w-full rounded-2xl bg-[#c7f36b] px-5 font-bold text-[#162018] transition-transform active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          Create a Circle
-        </button>
-      </div>
-
-      <div className="mt-8">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold">
-            Your circles
-          </h2>
-
-          {circles.length > 0 && (
-            <span className="text-sm text-black/40">
-              {circles.length}{' '}
-              {circles.length === 1
-                ? 'circle'
-                : 'circles'}
-            </span>
-          )}
-        </div>
-
-        {circles.length > 0 ? (
-          <div className="space-y-3">
-            {circles.map((circle) => (
-              <button
-                key={circle.id}
-                onClick={() =>
-                  onOpenCircle(circle.id)
-                }
-                className="w-full rounded-3xl border border-black/5 bg-white p-5 text-left shadow-sm transition-transform active:scale-[0.99]"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <span className="rounded-full bg-[#e5f7d0] px-2.5 py-1 text-xs font-semibold text-[#38611d]">
-                      Active goal
-                    </span>
-
-                    <h3 className="mt-4 text-lg font-bold">
-                      {circle.name}
-                    </h3>
-
-                    <p className="mt-1 line-clamp-2 text-sm leading-6 text-black/45">
-                      {circle.description ||
-                        'No description provided.'}
-                    </p>
-                  </div>
-
-                  <span className="text-lg text-black/30">
-                    →
-                  </span>
-                </div>
-
-                <div className="mt-5 flex items-center justify-between border-t border-black/5 pt-4">
-                  <span className="text-sm font-semibold">
-                    0 NIM raised
-                  </span>
-
-                  <span className="text-sm text-black/40">
-                    of {circle.targetAmount} NIM
-                  </span>
-                </div>
-              </button>
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-3xl border border-dashed border-black/10 bg-white/50 p-8 text-center">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-black/5 text-xl">
-              ◎
-            </div>
-
-            <h3 className="mt-4 font-semibold">
-              No circles yet
-            </h3>
-
-            <p className="mt-1 text-sm leading-6 text-black/45">
-              Create your first shared goal and invite your
-              friends to contribute.
-            </p>
-          </div>
+      <main
+        className={
+          isCircleView
+            ? 'mx-auto w-full max-w-xl px-5 pb-8'
+            : 'mx-auto w-full max-w-xl px-5 pb-32'
+        }
+      >
+        {screen === 'home' && (
+          <HomeView
+            userName={user.displayName}
+            circles={circles}
+            onCreateCircle={() =>
+              setScreen('create')
+            }
+            onViewCircles={() => {
+              setActiveCircleId(null)
+              setScreen('circles')
+            }}
+            onOpenCircle={handleOpenCircle}
+          />
         )}
-      </div>
-    </section>
+
+        {screen === 'create' && (
+          <CreateCircleView
+            address={address}
+            onBack={handleHome}
+            onCreate={handleCreateCircle}
+          />
+        )}
+
+        {screen === 'circles' && (
+          <CirclesView
+            circles={circles}
+            onCreateCircle={() =>
+              setScreen('create')
+            }
+            onOpenCircle={handleOpenCircle}
+          />
+        )}
+        
+        {screen === 'profile' && (
+          <ProfileView user={user} />
+        )}
+
+        {screen === 'circle' && activeCircle && (
+          <CircleView
+            circle={activeCircle}
+            onBack={handleHome}
+          />
+        )}
+
+        {screen === 'circle' && !activeCircle && (
+          <HomeView
+            userName={user.displayName}
+            circles={circles}
+            onCreateCircle={() =>
+              setScreen('create')
+            }
+            onViewCircles={() => {
+              setActiveCircleId(null)
+              setScreen('circles')
+            }}
+            onOpenCircle={handleOpenCircle}
+          />
+        )}
+      </main>
+
+      {!isCircleView && (
+        <BottomNavigation
+          activeTab={screen}
+          onNavigate={handleNavigate}
+        />
+      )}
+    </div>
   )
 }
 
-function CreateScreen({
-  address,
-  onBack,
-  onCreated,
-}: {
-  address: string | null
-  onBack: () => void
-  onCreated: (circle: Circle) => void
-}) {
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
-  const [targetAmount, setTargetAmount] = useState('')
-  const [deadline, setDeadline] = useState('')
-  const [formError, setFormError] = useState<string | null>(
-    null,
-  )
+export default function App() {
+  const wallet = useWallet()
 
-  function handleSubmit(
-    event: React.FormEvent<HTMLFormElement>,
-  ) {
-    event.preventDefault()
-    setFormError(null)
+  if (wallet.loading) {
+    return <WalletRestoringView />
+  }
 
-    const trimmedName = name.trim()
-    const trimmedDescription = description.trim()
-    const target = Number(targetAmount)
-
-    if (!address) {
-      setFormError(
-        'Your NIM wallet is not connected yet.',
-      )
-      return
-    }
-
-    if (!trimmedName) {
-      setFormError('Give your Circle a name.')
-      return
-    }
-
-    if (trimmedName.length > 80) {
-      setFormError(
-        'Circle names must be 80 characters or less.',
-      )
-      return
-    }
-
-    if (!Number.isFinite(target) || target <= 0) {
-      setFormError(
-        'Enter a target amount greater than 0 NIM.',
-      )
-      return
-    }
-
-    if (target > 21_000_000_000) {
-      setFormError(
-        'That target amount is too large.',
-      )
-      return
-    }
-
-    if (!deadline) {
-      setFormError('Choose a deadline.')
-      return
-    }
-
-    const deadlineDate = new Date(
-      `${deadline}T23:59:59`,
+  if (!wallet.address) {
+    return (
+      <ConnectWalletView
+        onConnect={wallet.connectWallet}
+        loading={wallet.loading}
+        error={wallet.error}
+        providerReady={
+          wallet.debug.providerInitialized
+        }
+      />
     )
-    const now = new Date()
-
-    if (
-      Number.isNaN(deadlineDate.getTime()) ||
-      deadlineDate <= now
-    ) {
-      setFormError(
-        'The deadline must be a future date.',
-      )
-      return
-    }
-
-    const newCircle: Circle = {
-      id: createCircleId(),
-      name: trimmedName,
-      description: trimmedDescription,
-      targetAmount: target,
-      deadline,
-      recipient: address,
-      creator: address,
-      createdAt: new Date().toISOString(),
-    }
-
-    onCreated(newCircle)
   }
 
   return (
-    <section className="pt-7">
-      <button
-        onClick={onBack}
-        className="mb-7 min-h-11 text-sm font-medium text-black/50"
-      >
-        ← Back
-      </button>
-
-      <h1 className="text-3xl font-bold tracking-tight">
-        Create a Circle
-      </h1>
-
-      <p className="mt-2 text-sm leading-6 text-black/50">
-        Set a goal, choose the target, and invite people
-        to help you reach it.
-      </p>
-
-      {address && (
-        <div className="mt-6 rounded-2xl bg-[#e5f7d0] px-4 py-3 text-sm text-[#38611d]">
-          <p className="font-semibold">
-            Circle recipient
-          </p>
-
-          <p className="mt-1 break-all font-mono text-xs opacity-80">
-            {address}
-          </p>
-        </div>
+    <ProfileGate
+      key={wallet.address}
+      address={wallet.address}
+    >
+      {(user) => (
+        <ConnectedApp
+          address={wallet.address!}
+          user={user}
+        />
       )}
-
-      {formError && (
-        <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          {formError}
-        </div>
-      )}
-
-      <form
-        onSubmit={handleSubmit}
-        className="mt-8 space-y-5"
-      >
-        <label className="block">
-          <span className="mb-2 block text-sm font-semibold">
-            Goal name
-          </span>
-
-          <input
-            type="text"
-            value={name}
-            onChange={(event) =>
-              setName(event.target.value)
-            }
-            placeholder="e.g. Beach trip"
-            maxLength={80}
-            className="h-14 w-full rounded-2xl border border-black/10 bg-white px-4 outline-none transition focus:border-[#7fae38] focus:ring-4 focus:ring-[#c7f36b]/30"
-          />
-        </label>
-
-        <label className="block">
-          <span className="mb-2 block text-sm font-semibold">
-            Description
-          </span>
-
-          <textarea
-            value={description}
-            onChange={(event) =>
-              setDescription(event.target.value)
-            }
-            placeholder="What are you saving for?"
-            rows={3}
-            maxLength={300}
-            className="w-full resize-none rounded-2xl border border-black/10 bg-white px-4 py-4 outline-none transition focus:border-[#7fae38] focus:ring-4 focus:ring-[#c7f36b]/30"
-          />
-        </label>
-
-        <label className="block">
-          <span className="mb-2 block text-sm font-semibold">
-            Target amount
-          </span>
-
-          <div className="relative">
-            <input
-              type="number"
-              min="1"
-              step="0.00001"
-              value={targetAmount}
-              onChange={(event) =>
-                setTargetAmount(event.target.value)
-              }
-              placeholder="500"
-              className="h-14 w-full rounded-2xl border border-black/10 bg-white px-4 pr-16 outline-none transition focus:border-[#7fae38] focus:ring-4 focus:ring-[#c7f36b]/30"
-            />
-
-            <span className="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-black/40">
-              NIM
-            </span>
-          </div>
-        </label>
-
-        <label className="block">
-          <span className="mb-2 block text-sm font-semibold">
-            Deadline
-          </span>
-
-          <input
-            type="date"
-            value={deadline}
-            min={
-              new Date()
-                .toISOString()
-                .split('T')[0]
-            }
-            onChange={(event) =>
-              setDeadline(event.target.value)
-            }
-            className="h-14 w-full rounded-2xl border border-black/10 bg-white px-4 outline-none transition focus:border-[#7fae38] focus:ring-4 focus:ring-[#c7f36b]/30"
-          />
-        </label>
-
-        <button
-          type="submit"
-          disabled={!address}
-          className="min-h-12 w-full rounded-2xl bg-[#162018] px-5 font-bold text-white transition-transform active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          Create Circle
-        </button>
-      </form>
-    </section>
+    </ProfileGate>
   )
 }
-
-function CircleScreen({
-  circle,
-  address,
-  onBack,
-}: {
-  circle: Circle
-  address: string | null
-  onBack: () => void
-}) {
-  const target = circle.targetAmount
-
-  return (
-    <section className="pt-7">
-      <button
-        onClick={onBack}
-        className="mb-7 min-h-11 text-sm font-medium text-black/50"
-      >
-        ← Back
-      </button>
-
-      <div className="rounded-4xl bg-white p-6 shadow-sm">
-        <span className="rounded-full bg-[#e5f7d0] px-3 py-1.5 text-xs font-semibold text-[#38611d]">
-          Active goal
-        </span>
-
-        <h1 className="mt-5 text-3xl font-bold tracking-tight">
-          {circle.name}
-        </h1>
-
-        <p className="mt-2 text-sm leading-6 text-black/50">
-          {circle.description ||
-            'Saving together toward a shared goal.'}
-        </p>
-
-        <div className="mt-8">
-          <div className="flex items-end justify-between">
-            <div>
-              <p className="text-3xl font-bold">
-                0 NIM
-              </p>
-
-              <p className="mt-1 text-sm text-black/40">
-                raised
-              </p>
-            </div>
-
-            <p className="text-sm font-semibold text-black/50">
-              of {target} NIM
-            </p>
-          </div>
-
-          <div className="mt-4 h-3 overflow-hidden rounded-full bg-black/5">
-            <div
-              className="h-full rounded-full bg-[#c7f36b]"
-              style={{ width: '0%' }}
-            />
-          </div>
-
-          <p className="mt-3 text-right text-xs font-medium text-black/40">
-            0% funded
-          </p>
-        </div>
-
-        <button
-          className="mt-8 min-h-12 w-full rounded-2xl bg-[#c7f36b] font-bold text-[#162018]"
-        >
-          Contribute NIM
-        </button>
-      </div>
-
-      <div className="mt-6 rounded-3xl border border-black/5 bg-white p-6">
-        <div className="flex items-center justify-between">
-          <h2 className="font-bold">
-            Contributors
-          </h2>
-
-          <span className="text-sm text-black/40">
-            0 people
-          </span>
-        </div>
-
-        <div className="mt-5 space-y-3 text-sm">
-          <div className="flex items-center justify-between rounded-2xl bg-black/[0.03] p-3">
-            <span className="text-black/50">
-              Deadline
-            </span>
-
-            <span className="font-semibold">
-              {new Date(
-                `${circle.deadline}T00:00:00`,
-              ).toLocaleDateString()}
-            </span>
-          </div>
-
-          <div className="flex items-center justify-between rounded-2xl bg-black/[0.03] p-3">
-            <span className="text-black/50">
-              Recipient
-            </span>
-
-            <span className="max-w-[180px] truncate font-mono text-xs font-semibold">
-              {circle.recipient}
-            </span>
-          </div>
-        </div>
-
-        {address && (
-          <p className="mt-5 text-xs text-black/35">
-            Your wallet:{' '}
-            <span className="font-mono">
-              {address.slice(0, 8)}...
-              {address.slice(-6)}
-            </span>
-          </p>
-        )}
-      </div>
-    </section>
-  )
-}
-
-export default App
