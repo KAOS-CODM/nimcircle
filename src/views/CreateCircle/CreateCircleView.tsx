@@ -7,12 +7,14 @@ interface CreateCircleViewProps {
     description: string
     targetAmount: number
     deadline: string
-  }) => void
+  }) => void | Promise<void>
+  loading?: boolean
 }
 
 export default function CreateCircleView({
   onBack,
   onCreate,
+  loading = false,
 }: CreateCircleViewProps) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -20,10 +22,14 @@ export default function CreateCircleView({
   const [deadline, setDeadline] = useState('')
   const [error, setError] = useState<string | null>(null)
 
-  function handleSubmit(
+  async function handleSubmit(
     event: React.FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault()
+
+    if (loading) {
+      return
+    }
 
     const amount = Number(targetAmount)
 
@@ -58,12 +64,21 @@ export default function CreateCircleView({
 
     setError(null)
 
-    onCreate({
-      name: name.trim(),
-      description: description.trim(),
-      targetAmount: amount,
-      deadline,
-    })
+    try {
+      await onCreate({
+        name: name.trim(),
+        description: description.trim(),
+        targetAmount: amount,
+        deadline,
+      })
+    } catch (requestError) {
+      const message =
+        requestError instanceof Error
+          ? requestError.message
+          : String(requestError)
+
+      setError(message)
+    }
   }
 
   return (
@@ -71,7 +86,8 @@ export default function CreateCircleView({
       <button
         type="button"
         onClick={onBack}
-        className="mb-6 min-h-11 text-sm font-semibold text-[#607060]"
+        disabled={loading}
+        className="mb-6 min-h-11 text-sm font-semibold text-[#607060] disabled:cursor-not-allowed disabled:opacity-50"
       >
         ← Back
       </button>
@@ -110,8 +126,9 @@ export default function CreateCircleView({
               setName(event.target.value)
             }
             maxLength={80}
+            disabled={loading}
             placeholder="e.g. New apartment"
-            className="w-full rounded-2xl border border-black/10 bg-white px-4 py-4 outline-none focus:border-[#162018]/30 focus:ring-2 focus:ring-[#dff5a8]"
+            className="w-full rounded-2xl border border-black/10 bg-white px-4 py-4 outline-none focus:border-[#162018]/30 focus:ring-2 focus:ring-[#dff5a8] disabled:cursor-not-allowed disabled:bg-gray-100"
           />
         </div>
 
@@ -131,8 +148,9 @@ export default function CreateCircleView({
             }
             maxLength={240}
             rows={4}
+            disabled={loading}
             placeholder="What are you saving for?"
-            className="w-full resize-none rounded-2xl border border-black/10 bg-white px-4 py-4 outline-none focus:border-[#162018]/30 focus:ring-2 focus:ring-[#dff5a8]"
+            className="w-full resize-none rounded-2xl border border-black/10 bg-white px-4 py-4 outline-none focus:border-[#162018]/30 focus:ring-2 focus:ring-[#dff5a8] disabled:cursor-not-allowed disabled:bg-gray-100"
           />
         </div>
 
@@ -155,8 +173,9 @@ export default function CreateCircleView({
               onChange={(event) =>
                 setTargetAmount(event.target.value)
               }
+              disabled={loading}
               placeholder="1000"
-              className="w-full rounded-2xl border border-black/10 bg-white px-4 py-4 pr-16 outline-none focus:border-[#162018]/30 focus:ring-2 focus:ring-[#dff5a8]"
+              className="w-full rounded-2xl border border-black/10 bg-white px-4 py-4 pr-16 outline-none focus:border-[#162018]/30 focus:ring-2 focus:ring-[#dff5a8] disabled:cursor-not-allowed disabled:bg-gray-100"
             />
 
             <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-[#607060]">
@@ -180,7 +199,8 @@ export default function CreateCircleView({
             onChange={(event) =>
               setDeadline(event.target.value)
             }
-            className="w-full rounded-2xl border border-black/10 bg-white px-4 py-4 outline-none focus:border-[#162018]/30 focus:ring-2 focus:ring-[#dff5a8]"
+            disabled={loading}
+            className="w-full rounded-2xl border border-black/10 bg-white px-4 py-4 outline-none focus:border-[#162018]/30 focus:ring-2 focus:ring-[#dff5a8] disabled:cursor-not-allowed disabled:bg-gray-100"
           />
         </div>
 
@@ -194,9 +214,12 @@ export default function CreateCircleView({
 
         <button
           type="submit"
-          className="min-h-12 w-full rounded-2xl bg-[#162018] px-5 py-3 text-sm font-bold text-white transition active:scale-[0.98]"
+          disabled={loading}
+          className="min-h-12 w-full rounded-2xl bg-[#162018] px-5 py-3 text-sm font-bold text-white transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100"
         >
-          Create Circle
+          {loading
+            ? 'Creating Circle...'
+            : 'Create Circle'}
         </button>
       </form>
     </section>

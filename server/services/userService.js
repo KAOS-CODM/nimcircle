@@ -24,6 +24,45 @@ async function createUser({
   const normalizedUsername =
     username.trim().toLowerCase()
 
+  if (
+    normalizedUsername.length < 3 ||
+    normalizedUsername.length > 20
+  ) {
+    const error = new Error(
+      'Username must be between 3 and 20 characters',
+    )
+
+    error.statusCode = 400
+    throw error
+  }
+
+  if (
+    !/^[a-z0-9_]+$/.test(
+      normalizedUsername,
+    )
+  ) {
+    const error = new Error(
+      'Username can only contain letters, numbers, and underscores',
+    )
+
+    error.statusCode = 400
+    throw error
+  }
+
+  const trimmedDisplayName =
+    displayName?.trim() || ''
+
+  if (
+    trimmedDisplayName.length > 30
+  ) {
+    const error = new Error(
+      'Display name must be 30 characters or fewer',
+    )
+
+    error.statusCode = 400
+    throw error
+  }
+
   const existingUser =
     await User.findOne({
       $or: [
@@ -39,6 +78,30 @@ async function createUser({
     })
 
   if (existingUser) {
+    if (
+      existingUser.walletAddress ===
+      normalizedWallet
+    ) {
+      const error = new Error(
+        'A profile already exists for this wallet',
+      )
+
+      error.statusCode = 409
+      throw error
+    }
+
+    if (
+      existingUser.username ===
+      normalizedUsername
+    ) {
+      const error = new Error(
+        'That username is already taken',
+      )
+
+      error.statusCode = 409
+      throw error
+    }
+
     const error = new Error(
       'A user with this wallet address or username already exists',
     )
@@ -55,7 +118,7 @@ async function createUser({
       normalizedUsername,
 
     displayName:
-      displayName?.trim() || '',
+      trimmedDisplayName,
 
     avatar:
       avatar?.trim() || '',
@@ -169,18 +232,60 @@ async function updateUser(
   const allowedUpdates = {}
 
   if (updates.username !== undefined) {
-    allowedUpdates.username =
+    const username =
       updates.username
         .trim()
         .toLowerCase()
+
+    if (
+      username.length < 3 ||
+      username.length > 20
+    ) {
+      const error = new Error(
+        'Username must be between 3 and 20 characters',
+      )
+
+      error.statusCode = 400
+      throw error
+    }
+
+    if (
+      !/^[a-z0-9_]+$/.test(
+        username,
+      )
+    ) {
+      const error = new Error(
+        'Username can only contain letters, numbers, and underscores',
+      )
+
+      error.statusCode = 400
+      throw error
+    }
+
+    allowedUpdates.username =
+      username
   }
 
   if (
     updates.displayName !==
     undefined
   ) {
-    allowedUpdates.displayName =
+    const displayName =
       updates.displayName.trim()
+
+    if (
+      displayName.length > 30
+    ) {
+      const error = new Error(
+        'Display name must be 30 characters or fewer',
+      )
+
+      error.statusCode = 400
+      throw error
+    }
+
+    allowedUpdates.displayName =
+      displayName
   }
 
   if (updates.avatar !== undefined) {
@@ -240,7 +345,7 @@ async function updateUser(
     if (error.code === 11000) {
       const duplicateError =
         new Error(
-          'A user with this username already exists',
+          'That username is already taken',
         )
 
       duplicateError.statusCode = 409

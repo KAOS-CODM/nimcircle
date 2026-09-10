@@ -58,10 +58,18 @@ router.get(
         stats,
       })
     } catch (error) {
-      console.error(
-        'GET /users/:walletAddress/stats failed:',
-        error,
-      )
+      if (
+        error.statusCode === 404
+      ) {
+        console.log(
+          'GET /users/:walletAddress/stats → 404 User not found',
+        )
+      } else {
+        console.error(
+          'GET /users/:walletAddress/stats failed:',
+          error,
+        )
+      }
 
       return res.status(
         error.statusCode || 500,
@@ -92,10 +100,22 @@ router.get(
         user,
       })
     } catch (error) {
-      console.error(
-        'GET /users/:walletAddress failed:',
-        error,
-      )
+      /*
+       * A missing profile is expected for
+       * first-time NimCircle users.
+       */
+      if (
+        error.statusCode === 404
+      ) {
+        console.log(
+          'GET /users/:walletAddress → 404 User not found',
+        )
+      } else {
+        console.error(
+          'GET /users/:walletAddress failed:',
+          error,
+        )
+      }
 
       return res.status(
         error.statusCode || 500,

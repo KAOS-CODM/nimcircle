@@ -69,31 +69,24 @@ export default function CircleView({
   )
 
   async function handleShare() {
-    const shareUrl = window.location.href
-
+    const shareUrl =
+      `${window.location.origin}/circle/${encodeURIComponent(
+        circle.id,
+      )}`
+  
     try {
-      if (
-        navigator.share &&
-        typeof navigator.share === 'function'
-      ) {
-        await navigator.share({
-          title: circle.name,
-          text: `Join my NimCircle goal: ${circle.name}`,
-          url: shareUrl,
-        })
-
-        return
-      }
-
       await navigator.clipboard.writeText(
         shareUrl,
       )
-
+  
       window.alert(
-        'Circle link copied to clipboard.',
+        'Circle link copied!',
       )
     } catch {
-      // Sharing can be cancelled by the user.
+      window.prompt(
+        'Copy this Circle link:',
+        shareUrl,
+      )
     }
   }
 

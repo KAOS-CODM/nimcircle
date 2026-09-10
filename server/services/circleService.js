@@ -3,7 +3,6 @@ const Contribution = require('../models/Contribution')
 const User = require('../models/User')
 
 async function createCircle({
-  circleId,
   name,
   description,
   targetAmount,
@@ -13,7 +12,6 @@ async function createCircle({
   recipientWallet,
 }) {
   if (
-    !circleId ||
     !name ||
     !targetAmount ||
     !deadline ||
@@ -22,7 +20,7 @@ async function createCircle({
     !recipientWallet
   ) {
     const error = new Error(
-      'circleId, name, targetAmount, deadline, creatorWallet, creatorUserId and recipientWallet are required',
+      'name, targetAmount, deadline, creatorWallet, creatorUserId and recipientWallet are required',
     )
 
     error.statusCode = 400
@@ -110,10 +108,14 @@ async function createCircle({
     throw error
   }
 
+  const circleId =
+    `circle_${Date.now()}_${Math.random()
+      .toString(36)
+      .slice(2, 10)}`
+
   try {
     return await Circle.create({
-      circleId:
-        circleId.trim(),
+      circleId,
 
       name:
         name.trim(),

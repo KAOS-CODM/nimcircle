@@ -93,9 +93,10 @@ async function startServer() {
 
   app.listen(
     PORT,
+    '0.0.0.0',
     () => {
       console.log(
-        `NimCircle API running on http://localhost:${PORT}`,
+        `NimCircle API running on port ${PORT}`,
       )
     },
   )
