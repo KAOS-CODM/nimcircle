@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useState,
 } from 'react'
@@ -12,7 +13,7 @@ import {
 } from '../../lib/api'
 
 interface CircleViewProps {
-  circle: Circle
+  circleId: string
   onBack: () => void
   currentAddress: string
   currentUserId: string
@@ -30,19 +31,33 @@ interface CircleStats {
 interface CircleContribution {
   _id: string
   circleId: string
+
   contributorWallet: string
   contributorUserId: string
+  contributorUsername?: string
+
   recipientWallet: string
+
   amount: number
+
   transactionHash: string
+
   memo: string
+
   status:
     | 'pending'
     | 'confirmed'
     | 'failed'
+
   confirmedAt: string | null
+
   createdAt: string
   updatedAt: string
+}
+
+interface DeadlineStatus {
+  label: string
+  icon: string
 }
 
 const EMPTY_STATS: CircleStats = {
@@ -64,11 +79,14 @@ function normalizeWalletAddress(
 }
 
 export default function CircleView({
-  circle,
+  circleId,
   onBack,
   currentAddress,
   currentUserId,
 }: CircleViewProps) {
+  const [circle, setCircle] =
+    useState<Circle | null>(null)
+
   const [now] =
     useState(() => Date.now())
 
@@ -80,22 +98,14 @@ export default function CircleView({
   const [
     stats,
     setStats,
-  ] = useState<CircleStats>({
-    ...EMPTY_STATS,
-
-    targetAmount:
-      circle.targetAmount,
-
-    creatorCommitment:
-      circle.creatorCommitment,
-  })
+  ] = useState<CircleStats>(
+    EMPTY_STATS,
+  )
 
   const [
     contributions,
     setContributions,
-  ] = useState<
-    CircleContribution[]
-  >([])
+  ] = useState<CircleContribution[]>([])
 
   const [
     loadingCircle,
@@ -103,57 +113,36 @@ export default function CircleView({
   ] = useState(true)
 
   const [
-    circleError,
-    setCircleError,
-  ] = useState<string | null>(null)
-
-  const [
     refreshingCircle,
     setRefreshingCircle,
   ] = useState(false)
 
-  async function loadCircle() {
-    setRefreshingCircle(true)
-    setCircleError(null)
+  const [
+    circleError,
+    setCircleError,
+  ] = useState<string | null>(null)
 
-    try {
-      const response =
-        await apiGetCircle(
-          circle.id,
-        )
+  const loadCircle = useCallback(
+    async (
+      initialLoad = false,
+    ) => {
+      if (initialLoad) {
+        setLoadingCircle(true)
+      } else {
+        setRefreshingCircle(true)
+      }
 
-      setStats(
-        response.stats,
-      )
+      setCircleError(null)
 
-      setContributions(
-        response.contributions,
-      )
-    } catch (requestError) {
-      const message =
-        requestError instanceof Error
-          ? requestError.message
-          : String(requestError)
-
-      setCircleError(message)
-    } finally {
-      setRefreshingCircle(false)
-    }
-  }
-
-  useEffect(() => {
-    let cancelled = false
-
-    async function loadInitialCircle() {
       try {
         const response =
           await apiGetCircle(
-            circle.id,
+            circleId,
           )
 
-        if (cancelled) {
-          return
-        }
+        setCircle(
+          response.circle,
+        )
 
         setStats(
           response.stats,
@@ -162,13 +151,7 @@ export default function CircleView({
         setContributions(
           response.contributions,
         )
-
-        setCircleError(null)
       } catch (requestError) {
-        if (cancelled) {
-          return
-        }
-
         const message =
           requestError instanceof Error
             ? requestError.message
@@ -176,73 +159,137 @@ export default function CircleView({
 
         setCircleError(message)
       } finally {
-        if (!cancelled) {
+        if (initialLoad) {
           setLoadingCircle(false)
+        } else {
+          setRefreshingCircle(false)
         }
       }
-    }
+    },
+    [circleId],
+  )
 
-    void loadInitialCircle()
-
-    return () => {
-      cancelled = true
-    }
-  }, [circle.id])
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadCircle(true)
+  }, [loadCircle])
 
   /*
-   * The backend is the source of truth for these values.
-   *
-   * The Circle object's values are only used as the
-   * initial fallback while the details request loads.
+   * The Circle-specific loading and error states
+   * belong to this view because this view owns
+   * the selected Circle.
    */
+  if (loadingCircle && !circle) {
+    return (
+      <section className="py-6">
+        <button
+          type="button"
+          onClick={onBack}
+          className="mb-6 min-h-11 text-sm font-semibold text-[#607060]"
+        >
+          ← Back
+        </button>
+
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <div className="w-full rounded-3xl bg-white p-6 text-center shadow-sm">
+            <p className="text-sm font-semibold text-[#162018]">
+              Loading Circle...
+            </p>
+
+            <p className="mt-2 text-xs text-[#607060]">
+              Getting the shared goal details.
+            </p>
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  if (circleError && !circle) {
+    return (
+      <section className="py-6">
+        <button
+          type="button"
+          onClick={onBack}
+          className="mb-6 min-h-11 text-sm font-semibold text-[#607060]"
+        >
+          ← Back
+        </button>
+
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <div className="w-full rounded-3xl bg-white p-6 text-center shadow-sm">
+            <h1 className="text-xl font-semibold text-[#162018]">
+              Unable to load Circle
+            </h1>
+
+            <p className="mt-3 text-sm leading-6 text-[#607060]">
+              {circleError}
+            </p>
+
+            <button
+              type="button"
+              onClick={() =>
+                void loadCircle(true)
+              }
+              className="mt-6 rounded-2xl bg-[#162018] px-5 py-3 text-sm font-semibold text-white"
+            >
+              Try again
+            </button>
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  /*
+   * This guard keeps TypeScript aware that
+   * everything below has a loaded Circle.
+   */
+  if (!circle) {
+    return null
+  }
+
   const raisedAmount =
     stats.raisedAmount
 
   const targetAmount =
-    loadingCircle
-      ? circle.targetAmount
-      : stats.targetAmount
+    stats.targetAmount > 0
+      ? stats.targetAmount
+      : circle.targetAmount
 
   const remainingAmount =
     Math.max(
       0,
-      stats.remainingAmount,
+      stats.remainingAmount > 0
+        ? stats.remainingAmount
+        : Math.max(
+            0,
+            targetAmount -
+              raisedAmount,
+          ),
     )
 
   const contributorCount =
     stats.contributorCount
 
   const creatorCommitment =
-    loadingCircle
-      ? circle.creatorCommitment
-      : stats.creatorCommitment
+    stats.creatorCommitment > 0
+      ? stats.creatorCommitment
+      : circle.creatorCommitment
 
   const progress =
-    loadingCircle
-      ? targetAmount > 0
-        ? Math.min(
-            100,
-            Math.round(
-              (raisedAmount /
-                targetAmount) *
-                100,
-            ),
-          )
-        : 0
-      : Math.min(
-          100,
-          Math.max(
-            0,
-            Math.round(
-              stats.progressPercentage,
-            ),
-          ),
-        )
+    Math.min(
+      100,
+      Math.max(
+        0,
+        Math.round(
+          stats.progressPercentage,
+        ),
+      ),
+    )
 
   const deadline =
-    new Date(
-      circle.deadline,
-    )
+    new Date(circle.deadline)
 
   const deadlineTimestamp =
     deadline.getTime()
@@ -314,7 +361,7 @@ export default function CircleView({
   async function handleShare() {
     const shareUrl =
       `${window.location.origin}/circle/${encodeURIComponent(
-        circle.id,
+        circleId,
       )}`
 
     try {
@@ -364,7 +411,9 @@ export default function CircleView({
             onClick={() =>
               void loadCircle()
             }
-            disabled={refreshingCircle}
+            disabled={
+              refreshingCircle
+            }
             className="mt-3 rounded-xl bg-red-100 px-4 py-2 text-xs font-bold text-red-700 disabled:opacity-50"
           >
             {refreshingCircle
@@ -376,12 +425,8 @@ export default function CircleView({
 
       <GoalHeader
         circle={circle}
-        raisedAmount={
-          raisedAmount
-        }
-        targetAmount={
-          targetAmount
-        }
+        raisedAmount={raisedAmount}
+        targetAmount={targetAmount}
         progress={progress}
         remainingAmount={
           remainingAmount
@@ -389,12 +434,8 @@ export default function CircleView({
         deadlineStatus={
           deadlineStatus
         }
-        isCompleted={
-          isCompleted
-        }
-        isExpired={
-          isExpired
-        }
+        isCompleted={isCompleted}
+        isExpired={isExpired}
       />
 
       <div className="mt-4 grid grid-cols-2 gap-3">
@@ -441,14 +482,14 @@ export default function CircleView({
         <div className="mt-4 divide-y divide-black/5">
           <InfoRow
             label="Creator"
-            value={circle.creator}
-            mono
+            value={`@${circle.creatorUsername}`}
+            secondaryValue={circle.creator}
           />
-
+          
           <InfoRow
             label="Goal owner"
-            value={circle.recipient}
-            mono
+            value={`@${circle.recipientUsername}`}
+            secondaryValue={circle.recipient}
           />
 
           <InfoRow
@@ -606,9 +647,7 @@ export default function CircleView({
       {showContributeModal &&
         currentAddress && (
           <ContributeModal
-            circleId={
-              circle.id
-            }
+            circleId={circleId}
             recipient={
               normalizedRecipientAddress
             }
@@ -803,10 +842,12 @@ function StatCard({
 function InfoRow({
   label,
   value,
+  secondaryValue,
   mono = false,
 }: {
   label: string
   value: string
+  secondaryValue?: string
   mono?: boolean
 }) {
   return (
@@ -815,15 +856,23 @@ function InfoRow({
         {label}
       </span>
 
-      <span
-        className={`max-w-[68%] break-all text-right text-sm text-[#162018]/70 ${
-          mono
-            ? 'font-mono text-xs'
-            : 'font-medium'
-        }`}
-      >
-        {value}
-      </span>
+      <div className="max-w-[68%] min-w-0 text-right">
+        <p
+          className={`break-all text-sm text-[#162018] ${
+            mono
+              ? 'font-mono text-xs'
+              : 'font-medium'
+          }`}
+        >
+          {value}
+        </p>
+
+        {secondaryValue && (
+          <p className="mt-1 break-all font-mono text-[10px] text-[#607060]">
+            {secondaryValue}
+          </p>
+        )}
+      </div>
     </div>
   )
 }
@@ -881,13 +930,13 @@ function ContributorList({
           >
             <div className="min-w-0">
               <p className="text-sm font-bold">
-                Contributor
+                {contribution.contributorUsername
+                  ? `@${contribution.contributorUsername}`
+                  : contribution.contributorWallet}
               </p>
-
+              
               <p className="mt-1 truncate font-mono text-xs text-[#607060]">
-                {
-                  contribution.contributorWallet
-                }
+                {contribution.contributorWallet}
               </p>
             </div>
 
@@ -1062,11 +1111,6 @@ function ExpiredState() {
 /* -------------------------------------------------------------------------- */
 /* Deadline                                                                   */
 /* -------------------------------------------------------------------------- */
-
-interface DeadlineStatus {
-  label: string
-  icon: string
-}
 
 function getDeadlineStatus(
   timestamp: number,

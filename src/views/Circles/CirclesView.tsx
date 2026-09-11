@@ -1,236 +1,301 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { Circle } from '../../types/circle'
-
-type CircleTab = 'created' | 'joined'
+import type { CircleProgress } from '../../hooks/useCircles'
 
 interface CirclesViewProps {
   circles: Circle[]
+  joinedCircles: Circle[]
+  circleProgress: Record<string, CircleProgress>
   onCreateCircle: () => void
   onOpenCircle: (circleId: string) => void
+  loading?: boolean
+  loadingJoined?: boolean
 }
 
 export default function CirclesView({
   circles,
+  joinedCircles,
+  circleProgress,
   onCreateCircle,
   onOpenCircle,
+  loading = false,
+  loadingJoined = false,
 }: CirclesViewProps) {
-  const [activeTab, setActiveTab] =
-    useState<CircleTab>('created')
+  const [activeTab, setActiveTab] = useState<
+    'created' | 'joined'
+  >('created')
 
-  const totalTarget = circles.reduce(
-    (total, circle) => total + circle.targetAmount,
-    0,
-  )
-
-  const displayedCircles =
+  const activeCircles =
     activeTab === 'created'
       ? circles
-      : []
+      : joinedCircles
+
+  const totalTarget = useMemo(
+    () =>
+      activeCircles.reduce(
+        (total, circle) =>
+          total + circle.targetAmount,
+        0,
+      ),
+    [activeCircles],
+  )
+
+  const isLoading =
+    activeTab === 'created'
+      ? loading
+      : loadingJoined
 
   return (
     <section className="py-6">
-      <div className="mb-7">
-        <p className="text-sm font-semibold text-[#607060]">
-          Shared goals
-        </p>
-
-        <h1 className="mt-1 text-3xl font-bold tracking-tight">
-          Your circles
-        </h1>
-
-        <p className="mt-2 text-sm leading-6 text-[#607060]">
-          Manage the goals you create and the ones you help fund.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-3xl border border-black/5 bg-white p-5 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[#607060]">
-            Created
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-semibold text-[#607060]">
+            Your Circles
           </p>
 
-          <p className="mt-2 text-2xl font-bold">
-            {circles.length}
-          </p>
+          <h1 className="mt-1 text-3xl font-bold tracking-tight">
+            Shared goals
+          </h1>
 
-          <p className="mt-1 text-xs text-[#607060]">
-            {circles.length === 1
-              ? 'shared goal'
-              : 'shared goals'}
+          <p className="mt-2 text-sm leading-6 text-[#607060]">
+            Create a goal, invite people, and watch
+            the progress grow together.
           </p>
         </div>
 
-        <div className="rounded-3xl border border-black/5 bg-white p-5 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[#607060]">
-            Targets
-          </p>
-
-          <p className="mt-2 truncate text-2xl font-bold">
-            {totalTarget.toLocaleString()}
-          </p>
-
-          <p className="mt-1 text-xs text-[#607060]">
-            NIM across your goals
-          </p>
-        </div>
+        <button
+          type="button"
+          onClick={onCreateCircle}
+          className="shrink-0 rounded-2xl bg-[#162018] px-4 py-3 text-sm font-bold text-white transition active:scale-[0.98]"
+        >
+          + Create
+        </button>
       </div>
 
-      <div className="mt-7 rounded-2xl bg-[#e9ece4] p-1">
+      <div className="mt-7 rounded-2xl bg-[#eef1eb] p-1">
         <div className="grid grid-cols-2 gap-1">
           <button
             type="button"
-            onClick={() => setActiveTab('created')}
-            className={`min-h-11 rounded-xl px-4 text-sm font-bold transition ${
+            onClick={() =>
+              setActiveTab('created')
+            }
+            className={`rounded-xl px-4 py-3 text-sm font-bold transition ${
               activeTab === 'created'
                 ? 'bg-white text-[#162018] shadow-sm'
                 : 'text-[#607060]'
             }`}
           >
             Created
+            {circles.length > 0 && (
+              <span className="ml-2 text-xs opacity-60">
+                {circles.length}
+              </span>
+            )}
           </button>
 
           <button
             type="button"
-            onClick={() => setActiveTab('joined')}
-            className={`min-h-11 rounded-xl px-4 text-sm font-bold transition ${
+            onClick={() =>
+              setActiveTab('joined')
+            }
+            className={`rounded-xl px-4 py-3 text-sm font-bold transition ${
               activeTab === 'joined'
                 ? 'bg-white text-[#162018] shadow-sm'
                 : 'text-[#607060]'
             }`}
           >
             Joined
+            {joinedCircles.length > 0 && (
+              <span className="ml-2 text-xs opacity-60">
+                {joinedCircles.length}
+              </span>
+            )}
           </button>
         </div>
       </div>
 
-      <div className="mt-8">
-        <div className="mb-3 flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-bold">
-              {activeTab === 'created'
-                ? 'Circles you created'
-                : 'Circles you joined'}
-            </h2>
+      {activeCircles.length > 0 && (
+        <div className="mt-6 rounded-3xl bg-[#162018] p-5 text-white">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-white/50">
+            {activeTab === 'created'
+              ? 'Created goal target'
+              : 'Joined goal target'}
+          </p>
 
-            <p className="mt-1 text-xs text-[#607060]">
-              {activeTab === 'created'
-                ? 'Goals owned by your wallet'
-                : 'Goals you have contributed to'}
+          <p className="mt-2 text-2xl font-bold">
+            {totalTarget.toLocaleString()} NIM
+          </p>
+
+          <p className="mt-1 text-sm text-white/60">
+            Across {activeCircles.length}{' '}
+            {activeCircles.length === 1
+              ? 'Circle'
+              : 'Circles'}
+          </p>
+        </div>
+      )}
+
+      <div className="mt-6">
+        {isLoading ? (
+          <div className="rounded-3xl bg-white p-6 text-center shadow-sm ring-1 ring-black/5">
+            <p className="text-sm font-semibold text-[#607060]">
+              Loading Circles...
             </p>
           </div>
-
-          {displayedCircles.length > 0 && (
-            <span className="text-xs font-semibold text-[#607060]">
-              {displayedCircles.length}
-            </span>
-          )}
-        </div>
-
-        {activeTab === 'joined' ? (
-          <JoinedEmptyState />
-        ) : displayedCircles.length === 0 ? (
-          <CreatedEmptyState
+        ) : activeCircles.length === 0 ? (
+          <EmptyState
+            type={activeTab}
             onCreateCircle={onCreateCircle}
           />
         ) : (
-          <div className="space-y-3">
-            {displayedCircles.map((circle) => (
+          <div className="space-y-4">
+            {activeCircles.map((circle) => (
               <CircleCard
                 key={circle.id}
                 circle={circle}
-                onOpen={() => onOpenCircle(circle.id)}
+                progress={
+                  circleProgress[circle.id]
+                }
+                onOpen={() =>
+                  onOpenCircle(circle.id)
+                }
               />
             ))}
           </div>
         )}
       </div>
-
-      {activeTab === 'created' &&
-        displayedCircles.length > 0 && (
-          <button
-            type="button"
-            onClick={onCreateCircle}
-            className="mt-6 min-h-12 w-full rounded-2xl bg-[#162018] px-5 text-sm font-bold text-white transition-transform active:scale-[0.98]"
-          >
-            + Create another Circle
-          </button>
-        )}
     </section>
   )
 }
 
 function CircleCard({
   circle,
+  progress,
   onOpen,
 }: {
   circle: Circle
+  progress?: CircleProgress
   onOpen: () => void
 }) {
-  const deadline = new Date(circle.deadline)
+  const raisedAmount =
+    progress?.raisedAmount ?? 0
 
-  const deadlineLabel = Number.isNaN(
-    deadline.getTime(),
+  const progressPercentage =
+    progress?.progressPercentage ?? 0
+
+  const contributorCount =
+    progress?.contributorCount ?? 0
+
+  const safeProgress = Math.min(
+    100,
+    Math.max(0, progressPercentage),
   )
-    ? circle.deadline
-    : deadline.toLocaleDateString(undefined, {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-      })
 
   return (
     <button
       type="button"
       onClick={onOpen}
-      className="w-full rounded-3xl border border-black/5 bg-white p-5 text-left shadow-sm transition-transform active:scale-[0.99]"
+      className="w-full rounded-3xl bg-white p-5 text-left shadow-sm ring-1 ring-black/5 transition active:scale-[0.99]"
     >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-[#c7f36b]" />
-
-            <span className="text-xs font-semibold text-[#607060]">
-              Active
-            </span>
-          </div>
-
-          <h3 className="mt-2 truncate font-bold">
+          <h2 className="truncate text-lg font-bold text-[#162018]">
             {circle.name}
-          </h3>
+          </h2>
 
-          <p className="mt-1 truncate text-sm text-[#607060]">
+          <p className="mt-1 line-clamp-2 text-sm leading-5 text-[#607060]">
             {circle.description ||
-              'Shared NIM savings goal'}
+              'No description provided.'}
           </p>
         </div>
 
-        <span className="shrink-0 text-sm font-bold">
-          {circle.targetAmount.toLocaleString()} NIM
+        <span className="shrink-0 rounded-full bg-[#eff9d7] px-3 py-1 text-xs font-bold text-[#162018]">
+          {circle.status}
         </span>
       </div>
 
-      <div className="mt-5 h-2 overflow-hidden rounded-full bg-[#f0f2ec]">
-        <div className="h-full w-0 rounded-full bg-[#c7f36b]" />
-      </div>
+      <div className="mt-5">
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[#607060]">
+              Raised
+            </p>
 
-      <div className="mt-3 flex items-end justify-between gap-4">
-        <div>
-          <p className="text-xs text-[#607060]">
-            Raised
+            <p className="mt-1 text-lg font-bold text-[#162018]">
+              {raisedAmount.toLocaleString()} NIM
+            </p>
+          </div>
+
+          <div className="text-right">
+            <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[#607060]">
+              Target
+            </p>
+
+            <p className="mt-1 text-sm font-bold text-[#162018]">
+              {circle.targetAmount.toLocaleString()}{' '}
+              NIM
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-4 h-2 overflow-hidden rounded-full bg-[#edf0e9]">
+          <div
+            className="h-full rounded-full bg-[#c7f36b] transition-all duration-500"
+            style={{
+              width: `${safeProgress}%`,
+            }}
+          />
+        </div>
+
+        <div className="mt-2 flex items-center justify-between">
+          <p className="text-xs font-semibold text-[#607060]">
+            {safeProgress.toFixed(0)}% funded
           </p>
 
-          <p className="mt-1 text-sm font-bold">
-            0 NIM
+          <p className="text-xs font-semibold text-[#607060]">
+            {contributorCount}{' '}
+            {contributorCount === 1
+              ? 'contributor'
+              : 'contributors'}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-5 grid grid-cols-2 gap-3">
+        <div className="rounded-2xl bg-[#f5f6f2] p-3">
+          <p className="text-xs text-[#607060]">
+            Creator commitment
+          </p>
+
+          <p className="mt-1 text-sm font-bold text-[#162018]">
+            {circle.creatorCommitment.toLocaleString()}{' '}
+            NIM
           </p>
         </div>
 
-        <div className="text-right">
+        <div className="rounded-2xl bg-[#f5f6f2] p-3">
           <p className="text-xs text-[#607060]">
             Deadline
           </p>
 
-          <p className="mt-1 text-sm font-semibold">
-            {deadlineLabel}
+          <p className="mt-1 text-sm font-bold text-[#162018]">
+            {formatDeadline(circle.deadline)}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-4 flex items-center justify-between">
+        <p className="text-xs font-medium text-[#607060]">
+          Goal owner
+        </p>
+        
+        <div className="max-w-[70%] min-w-0 text-right">
+          <p className="truncate text-xs font-semibold text-[#162018]">
+            @{circle.recipientUsername}
+          </p>
+        
+          <p className="truncate font-mono text-[10px] text-[#607060]">
+            {circle.recipient}
           </p>
         </div>
       </div>
@@ -238,52 +303,70 @@ function CircleCard({
   )
 }
 
-function CreatedEmptyState({
+function EmptyState({
+  type,
   onCreateCircle,
 }: {
+  type: 'created' | 'joined'
   onCreateCircle: () => void
 }) {
+  if (type === 'joined') {
+    return (
+      <div className="rounded-3xl border border-dashed border-black/10 bg-white p-8 text-center">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#dff5a8] text-xl font-bold text-[#162018]">
+          +
+        </div>
+
+        <h2 className="mt-4 text-lg font-bold">
+          No joined Circles yet
+        </h2>
+
+        <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-[#607060]">
+          When you contribute to someone else's
+          Circle, it will appear here.
+        </p>
+      </div>
+    )
+  }
+
   return (
-    <div className="rounded-3xl border border-dashed border-black/10 bg-white/60 p-7 text-center">
-      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#dff5a8] text-xl font-bold text-[#162018]">
+    <div className="rounded-3xl border border-dashed border-black/10 bg-white p-8 text-center">
+      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#dff5a8] text-xl font-bold text-[#162018]">
         +
       </div>
 
-      <h3 className="mt-4 text-base font-bold">
-        No created Circles
-      </h3>
+      <h2 className="mt-4 text-lg font-bold">
+        Create your first Circle
+      </h2>
 
-      <p className="mx-auto mt-2 max-w-sm text-sm leading-5 text-[#607060]">
-        Create a shared goal and invite people to contribute NIM
-        toward it.
+      <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-[#607060]">
+        Set a savings goal and bring other people
+        together to reach it.
       </p>
 
       <button
         type="button"
         onClick={onCreateCircle}
-        className="mt-5 min-h-11 rounded-2xl bg-[#162018] px-5 text-sm font-bold text-white transition-transform active:scale-[0.97]"
+        className="mt-5 rounded-2xl bg-[#162018] px-5 py-3 text-sm font-bold text-white"
       >
-        Create a Circle
+        Create Circle
       </button>
     </div>
   )
 }
 
-function JoinedEmptyState() {
-  return (
-    <div className="rounded-3xl border border-dashed border-black/10 bg-white/60 p-7 text-center">
-      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#dff5a8] text-xl font-bold text-[#162018]">
-        ○
-      </div>
+function formatDeadline(
+  deadline: string,
+): string {
+  const date = new Date(deadline)
 
-      <h3 className="mt-4 text-base font-bold">
-        No joined Circles yet
-      </h3>
+  if (Number.isNaN(date.getTime())) {
+    return deadline
+  }
 
-      <p className="mx-auto mt-2 max-w-sm text-sm leading-5 text-[#607060]">
-        Circles you contribute to will appear here so you can
-        easily keep track of the goals you are helping fund.
-      </p>
-    </div>
-  )
+  return date.toLocaleDateString(undefined, {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
 }

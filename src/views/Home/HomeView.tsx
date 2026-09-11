@@ -1,8 +1,11 @@
 import type { Circle } from '../../types/circle'
+import type { CircleProgress } from '../../hooks/useCircles'
 
 interface HomeViewProps {
   userName: string
   circles: Circle[]
+  joinedCircles: Circle[]
+  circleProgress: Record<string, CircleProgress>
   onCreateCircle: () => void
   onViewCircles: () => void
   onOpenCircle: (circleId: string) => void
@@ -11,16 +14,43 @@ interface HomeViewProps {
 export default function HomeView({
   userName,
   circles,
+  joinedCircles,
+  circleProgress,
   onCreateCircle,
   onViewCircles,
   onOpenCircle,
 }: HomeViewProps) {
-  const totalTarget = circles.reduce(
+  const allCircles = Array.from(
+    new Map(
+      [...circles, ...joinedCircles].map((circle) => [
+        circle.id,
+        circle,
+      ]),
+    ).values(),
+  )
+
+  const activeCircles = allCircles
+    .filter((circle) => circle.status === 'active')
+    .slice(0, 3)
+
+  /*const totalTarget = activeCircles.reduce(
     (total, circle) => total + circle.targetAmount,
+    0,
+  )*/
+
+  const totalRaised = activeCircles.reduce(
+    (total, circle) =>
+      total + (circleProgress[circle.id]?.raisedAmount ?? 0),
     0,
   )
 
-  const activeCircles = circles.slice(0, 3)
+  const createdCount = circles.filter(
+    (circle) => circle.status === 'active',
+  ).length
+
+  const joinedCount = joinedCircles.filter(
+    (circle) => circle.status === 'active',
+  ).length
 
   return (
     <section className="py-6">
@@ -34,8 +64,9 @@ export default function HomeView({
         </h1>
 
         <p className="mt-2 text-sm leading-6 text-[#607060]">
-          Bring people together and save toward something that
-          matters.
+          NimCircle makes saving together simple. Create a shared
+          goal, invite people, and contribute NIM toward something
+          that matters.
         </p>
       </div>
 
@@ -55,8 +86,8 @@ export default function HomeView({
             </h2>
 
             <p className="mt-2 max-w-xs text-sm leading-5 text-white/60">
-              Set a shared NIM target and invite people to
-              contribute.
+              Set a shared NIM target and let everyone contribute
+              toward the same goal.
             </p>
           </div>
 
@@ -73,29 +104,29 @@ export default function HomeView({
           className="rounded-3xl border border-black/5 bg-white p-5 text-left shadow-sm transition-transform active:scale-[0.98]"
         >
           <p className="text-xs font-semibold uppercase tracking-wide text-[#607060]">
-            Created
+            Your goals
           </p>
 
           <p className="mt-2 text-2xl font-bold">
-            {circles.length}
+            {allCircles.length}
           </p>
 
           <p className="mt-1 text-xs font-medium text-[#607060]">
-            Your circles
+            {createdCount} created · {joinedCount} joined
           </p>
         </button>
 
         <div className="rounded-3xl border border-black/5 bg-white p-5 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wide text-[#607060]">
-            Total targets
+            Total raised
           </p>
 
           <p className="mt-2 truncate text-2xl font-bold">
-            {totalTarget.toLocaleString()}
+            {totalRaised.toLocaleString()}
           </p>
 
           <p className="mt-1 text-xs font-medium text-[#607060]">
-            NIM across your goals
+            NIM across active goals
           </p>
         </div>
       </div>
@@ -108,11 +139,11 @@ export default function HomeView({
             </h2>
 
             <p className="mt-1 text-xs text-[#607060]">
-              Your most recent shared goals
+              Track the shared goals you're saving toward.
             </p>
           </div>
 
-          {circles.length > 0 && (
+          {allCircles.length > 0 && (
             <button
               type="button"
               onClick={onViewCircles}
@@ -123,16 +154,36 @@ export default function HomeView({
           )}
         </div>
 
-        {circles.length === 0 ? (
+        {allCircles.length === 0 ? (
           <EmptyHomeState
             onCreateCircle={onCreateCircle}
           />
+        ) : activeCircles.length === 0 ? (
+          <div className="rounded-3xl border border-black/5 bg-white/60 p-7 text-center">
+            <h3 className="text-base font-bold">
+              No active goals
+            </h3>
+
+            <p className="mx-auto mt-2 max-w-sm text-sm leading-5 text-[#607060]">
+              Your completed or expired Circles will stay in your
+              collection. Start a new goal when you're ready.
+            </p>
+
+            <button
+              type="button"
+              onClick={onCreateCircle}
+              className="mt-5 min-h-11 rounded-2xl bg-[#162018] px-5 text-sm font-bold text-white transition-transform active:scale-[0.97]"
+            >
+              Create a Circle
+            </button>
+          </div>
         ) : (
           <div className="space-y-3">
             {activeCircles.map((circle) => (
               <HomeCircleCard
                 key={circle.id}
                 circle={circle}
+                progress={circleProgress[circle.id]}
                 onOpen={() => onOpenCircle(circle.id)}
               />
             ))}
@@ -140,13 +191,13 @@ export default function HomeView({
         )}
       </div>
 
-      {circles.length > 3 && (
+      {allCircles.length > 3 && (
         <button
           type="button"
           onClick={onViewCircles}
           className="mt-4 min-h-11 w-full rounded-2xl border border-black/10 bg-white px-5 text-sm font-bold text-[#162018] transition-transform active:scale-[0.98]"
         >
-          View all {circles.length} circles
+          View all {allCircles.length} goals
         </button>
       )}
     </section>
@@ -170,7 +221,7 @@ function EmptyHomeState({
 
       <p className="mx-auto mt-2 max-w-sm text-sm leading-5 text-[#607060]">
         Create a shared savings goal, set a target, and invite
-        people to contribute NIM.
+        people to contribute NIM together.
       </p>
 
       <button
@@ -186,11 +237,25 @@ function EmptyHomeState({
 
 function HomeCircleCard({
   circle,
+  progress,
   onOpen,
 }: {
   circle: Circle
+  progress?: CircleProgress
   onOpen: () => void
 }) {
+  const raisedAmount = progress?.raisedAmount ?? 0
+  const remainingAmount =
+    progress?.remainingAmount ??
+    Math.max(circle.targetAmount - raisedAmount, 0)
+
+  const progressPercentage = Math.min(
+    Math.max(progress?.progressPercentage ?? 0, 0),
+    100,
+  )
+
+  const contributorCount = progress?.contributorCount ?? 0
+
   return (
     <button
       type="button"
@@ -223,15 +288,27 @@ function HomeCircleCard({
       </div>
 
       <div className="mt-5 h-2 overflow-hidden rounded-full bg-[#f0f2ec]">
-        <div className="h-full w-0 rounded-full bg-[#c7f36b]" />
+        <div
+          className="h-full rounded-full bg-[#c7f36b] transition-all"
+          style={{
+            width: `${progressPercentage}%`,
+          }}
+        />
       </div>
 
       <div className="mt-2 flex items-center justify-between gap-3 text-xs text-[#607060]">
-        <span>0 NIM raised</span>
+        <span>
+          {raisedAmount.toLocaleString()} NIM raised
+        </span>
 
         <span>
-          {circle.targetAmount.toLocaleString()} NIM to go
+          {remainingAmount.toLocaleString()} NIM to go
         </span>
+      </div>
+
+      <div className="mt-3 text-xs font-medium text-[#607060]">
+        {contributorCount}{' '}
+        {contributorCount === 1 ? 'contributor' : 'contributors'}
       </div>
     </button>
   )

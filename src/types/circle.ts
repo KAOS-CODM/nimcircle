@@ -1,18 +1,29 @@
 export interface Circle {
   id: string
+
   name: string
+
   description: string
+
   targetAmount: number
+
   deadline: string
 
-  // Wallet that receives contributions.
   recipient: string
 
-  // Wallet that created the Circle.
+  recipientUsername?: string
+
   creator: string
 
-  // Creator's fixed commitment in NIM.
+  creatorUsername?: string
+
   creatorCommitment: number
+
+  status:
+    | 'active'
+    | 'completed'
+    | 'expired'
+    | 'cancelled'
 
   createdAt: string
 }

@@ -202,6 +202,45 @@ function mapApiUser(
   }
 }
 
+async function enrichCircleWithUsernames(
+  circle: Circle,
+): Promise<Circle> {
+  const [
+    creatorUsername,
+    recipientUsername,
+  ] = await Promise.all([
+    apiGetUsername(circle.creator),
+    apiGetUsername(circle.recipient),
+  ])
+
+  return {
+    ...circle,
+
+    creatorUsername,
+
+    recipientUsername,
+  }
+}
+
+async function enrichContributionWithUsername(
+  contribution: ApiContribution,
+): Promise<
+  ApiContribution & {
+    contributorUsername?: string
+  }
+> {
+  const contributorUsername =
+    await apiGetUsername(
+      contribution.contributorWallet,
+    )
+
+  return {
+    ...contribution,
+
+    contributorUsername,
+  }
+}
+
 function mapApiCircle(
   circle: ApiCircle,
 ): Circle {
@@ -235,6 +274,8 @@ function mapApiCircle(
       lunaToNim(
         circle.creatorCommitment,
       ),
+
+    status: circle.status,
 
     createdAt:
       circle.createdAt,
@@ -392,6 +433,25 @@ export async function apiGetUser(
   )
 }
 
+export async function apiGetUsername(
+  walletAddress: string,
+): Promise<string> {
+  const response =
+    await request<ApiUserResponse>(
+      `/users/${encodeURIComponent(
+        normalizeWalletAddress(
+          walletAddress,
+        ),
+      )}`,
+    )
+
+  return (
+    response.user.username ||
+    response.user.displayName ||
+    walletAddress
+  )
+}
+
 export async function apiGetUserStats(
   walletAddress: string,
 ): Promise<{
@@ -545,11 +605,22 @@ export async function apiGetCircle(
       )}`,
     )
 
-  return {
-    circle:
+  const circle =
+    await enrichCircleWithUsernames(
       mapApiCircle(
         response.circle,
       ),
+    )
+
+    const contributions =
+      await Promise.all(
+        response.contributions.map(
+          enrichContributionWithUsername,
+        ),
+      )
+
+  return {
+    circle,
 
     stats: {
       raisedAmount:
@@ -585,8 +656,8 @@ export async function apiGetCircle(
         ),
     },
 
-    contributions:
-      response.contributions,
+    contributions,
+      //response.contributions,
   }
 }
 
@@ -602,8 +673,15 @@ export async function apiGetCreatedCircles(
       )}`,
     )
 
-  return response.circles.map(
-    mapApiCircle,
+  const circles =
+    response.circles.map(
+      mapApiCircle,
+    )
+
+  return Promise.all(
+    circles.map(
+      enrichCircleWithUsernames,
+    ),
   )
 }
 
@@ -619,8 +697,15 @@ export async function apiGetJoinedCircles(
       )}`,
     )
 
-  return response.circles.map(
-    mapApiCircle,
+  const circles =
+    response.circles.map(
+      mapApiCircle,
+    )
+
+  return Promise.all(
+    circles.map(
+      enrichCircleWithUsernames,
+    ),
   )
 }
 
