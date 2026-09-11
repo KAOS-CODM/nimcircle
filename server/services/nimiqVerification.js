@@ -1,9 +1,19 @@
 const Nimiq = require('@nimiq/core')
 
+const NETWORK =
+  process.env.NIMIQ_NETWORK || 'TestAlbatross'
+
 const TEST_ALBATROSS_SEEDS = [
   '/dns4/seed1.pos.nimiq-testnet.com/tcp/8443/wss',
   '/dns4/seed2.pos.nimiq-testnet.com/tcp/8443/wss',
   '/dns4/seed3.pos.nimiq-testnet.com/tcp/8443/wss',
+]
+
+const MAIN_ALBATROSS_SEEDS = [
+  '/dns4/aurora.seed.nimiq.com/tcp/443/wss',
+  '/dns4/catalyst.seed.nimiq.network/tcp/443/wss',
+  '/dns4/cipher.seed.nimiq-network.com/tcp/443/wss',
+  '/dns4/eclipse.seed.nimiq.cloud/tcp/443/wss',
 ]
 
 let clientPromise = null
@@ -16,7 +26,8 @@ function normalizeAddress(address) {
 }
 
 function formatUserFriendlyAddress(address) {
-  const compactAddress = normalizeAddress(address)
+  const compactAddress =
+    normalizeAddress(address)
 
   if (
     !compactAddress ||
@@ -83,13 +94,25 @@ async function getNimiqClient() {
         const config =
           new Nimiq.ClientConfiguration()
 
-        config.network(
-          'TestAlbatross',
-        )
+        if (
+          NETWORK === 'MainAlbatross'
+        ) {
+          config.network(
+            'MainAlbatross',
+          )
 
-        config.seedNodes(
-          TEST_ALBATROSS_SEEDS,
-        )
+          config.seedNodes(
+            MAIN_ALBATROSS_SEEDS,
+          )
+        } else {
+          config.network(
+            'TestAlbatross',
+          )
+
+          config.seedNodes(
+            TEST_ALBATROSS_SEEDS,
+          )
+        }
 
         const client =
           await Nimiq.Client.create(

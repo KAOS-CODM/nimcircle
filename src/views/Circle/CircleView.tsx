@@ -96,6 +96,11 @@ export default function CircleView({
   ] = useState(false)
 
   const [
+    linkCopied,
+    setLinkCopied,
+  ] = useState(false)
+
+  const [
     stats,
     setStats,
   ] = useState<CircleStats>(
@@ -359,23 +364,54 @@ export default function CircleView({
     )
 
   async function handleShare() {
+    const miniAppUrl =
+      import.meta.env.VITE_NIMCIRCLE_URL
+  
     const shareUrl =
-      `${window.location.origin}/circle/${encodeURIComponent(
-        circleId,
-      )}`
-
+      `https://nimpay.app/miniapps/open/${miniAppUrl}/circle/${encodeURIComponent(circleId)}`
+  
     try {
-      await navigator.clipboard.writeText(
-        shareUrl,
+      const textArea =
+        document.createElement('textarea')
+  
+      textArea.value = shareUrl
+      textArea.style.position = 'fixed'
+      textArea.style.left = '-9999px'
+      textArea.style.top = '0'
+  
+      document.body.appendChild(
+        textArea,
       )
-
+  
+      textArea.focus()
+      textArea.select()
+  
+      const copied =
+        document.execCommand('copy')
+  
+      document.body.removeChild(
+        textArea,
+      )
+  
+      if (!copied) {
+        throw new Error(
+          'Copy command failed',
+        )
+      }
+  
+      setLinkCopied(true)
+  
+      window.setTimeout(() => {
+        setLinkCopied(false)
+      }, 2000)
+    } catch (error) {
+      console.error(
+        'Failed to copy Circle link:',
+        error,
+      )
+  
       window.alert(
-        'Circle link copied!',
-      )
-    } catch {
-      window.prompt(
-        'Copy this Circle link:',
-        shareUrl,
+        'Unable to copy Circle link.',
       )
     }
   }
@@ -471,7 +507,9 @@ export default function CircleView({
           ↗
         </span>
 
-        Share Circle
+        {linkCopied
+          ? 'Link copied!'
+          : 'Share Circle'}
       </button>
 
       <div className="mt-6 rounded-3xl border border-black/5 bg-white p-5 shadow-sm">
