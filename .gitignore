@@ -27,4 +27,4 @@ dist-ssr
 .env
 .env.*
 !.env.example
-src/components/ContributeModal.tsx
+src/lib/nimiqDiagnostics.ts

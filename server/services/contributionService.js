@@ -1,3 +1,6 @@
+const {
+  verifyContributionTransaction,
+} = require('./nimiqVerification')
 const Contribution = require('../models/Contribution')
 const Circle = require('../models/Circle')
 const User = require('../models/User')
@@ -8,23 +11,26 @@ async function createContribution({
   contributorUserId,
   amount,
   transactionHash,
+  recipientWallet,
+  memo,
 }) {
   if (
     !circleId ||
     !contributorWallet ||
     !contributorUserId ||
     !amount ||
-    !transactionHash
+    !transactionHash ||
+    !recipientWallet
   ) {
     const error = new Error(
-      'circleId, contributorWallet, contributorUserId, amount and transactionHash are required',
+      'circleId, contributorWallet, contributorUserId, amount, transactionHash and recipientWallet are required',
     )
 
     error.statusCode = 400
     throw error
   }
 
-  let circle =
+  const circle =
     await Circle.findOne({
       circleId:
         circleId.trim(),
@@ -40,11 +46,12 @@ async function createContribution({
   }
 
   /*
-   * Synchronize the Circle status before
+   * Synchronize Circle status before
    * accepting a new contribution.
    */
   if (
-    circle.status === 'active'
+    circle.status ===
+    'active'
   ) {
     const contributionTotal =
       await Contribution.aggregate([
@@ -94,7 +101,8 @@ async function createContribution({
   }
 
   if (
-    circle.status !== 'active'
+    circle.status !==
+    'active'
   ) {
     const error = new Error(
       'This Circle is no longer accepting contributions',
@@ -135,6 +143,46 @@ async function createContribution({
     throw error
   }
 
+  const normalizedRecipientWallet =
+    recipientWallet
+      .trim()
+      .toLowerCase()
+
+  /*
+   * Every contribution must go to the
+   * Circle goal owner's wallet.
+   */
+  if (
+    normalizedRecipientWallet !==
+    circle.goalOwnerWallet
+  ) {
+    const error = new Error(
+      'Contribution recipient does not match the Circle goal owner',
+    )
+
+    error.statusCode = 400
+    throw error
+  }
+
+  /*
+   * A personal goal cannot be funded by
+   * pretending the creator paid themselves.
+   *
+   * The creator commitment for a personal
+   * goal is handled separately.
+   */
+  if (
+    normalizedWallet ===
+    circle.goalOwnerWallet
+  ) {
+    const error = new Error(
+      'The goal owner cannot record a self-payment as a contribution',
+    )
+
+    error.statusCode = 400
+    throw error
+  }
+
   const parsedAmount =
     Number(amount)
 
@@ -164,6 +212,11 @@ async function createContribution({
     throw error
   }
 
+  const normalizedMemo =
+    typeof memo === 'string'
+      ? memo.trim()
+      : ''
+
   const existingContribution =
     await Contribution.findOne({
       transactionHash:
@@ -176,16 +229,13 @@ async function createContribution({
     )
 
     error.statusCode = 409
+
     error.contribution =
       existingContribution
 
     throw error
   }
 
-  /*
-   * Calculate the current confirmed
-   * balance before accepting the contribution.
-   */
   const contributionTotal =
     await Contribution.aggregate([
       {
@@ -218,10 +268,6 @@ async function createContribution({
       0,
     )
 
-  /*
-   * Never allow a contribution to
-   * exceed the Circle target.
-   */
   if (
     parsedAmount >
     remainingAmount
@@ -245,13 +291,20 @@ async function createContribution({
 
         contributorUserId,
 
+        recipientWallet:
+          normalizedRecipientWallet,
+
         amount:
           parsedAmount,
 
         transactionHash:
           normalizedHash,
 
-        status: 'pending',
+        memo:
+          normalizedMemo,
+
+        status:
+          'pending',
       })
 
     return contribution
@@ -275,11 +328,9 @@ async function confirmContribution(
   transactionHash,
 ) {
   const contribution =
-    await Contribution.findOne(
-      {
-        transactionHash,
-      },
-    )
+    await Contribution.findOne({
+      transactionHash,
+    })
 
   if (!contribution) {
     const error = new Error(
@@ -302,7 +353,7 @@ async function confirmContribution(
     'failed'
   ) {
     const error = new Error(
-      'Failed contributions cannot be confirmed',
+      'Contribution has already failed',
     )
 
     error.statusCode = 400
@@ -324,11 +375,9 @@ async function confirmContribution(
     throw error
   }
 
-  if (
-    circle.status !== 'active'
-  ) {
+  if (circle.status !== 'active') {
     const error = new Error(
-      'This Circle is no longer accepting contributions',
+      `Circle is ${circle.status}`,
     )
 
     error.statusCode = 400
@@ -336,60 +385,69 @@ async function confirmContribution(
   }
 
   if (
-    new Date() >
-    circle.deadline
+    contribution.recipientWallet !==
+    circle.goalOwnerWallet
   ) {
-    circle.status =
-      'expired'
-
-    await circle.save()
-
     const error = new Error(
-      'This Circle has passed its deadline',
+      'Contribution recipient does not match the Circle goal owner',
     )
 
     error.statusCode = 400
     throw error
   }
 
-  const contributionTotal =
-    await Contribution.aggregate([
-      {
-        $match: {
-          circleId:
-            circle.circleId,
+  const verification =
+    await verifyContributionTransaction({
+      transactionHash:
+        contribution.transactionHash,
 
-          status: 'confirmed',
-        },
-      },
-      {
-        $group: {
-          _id: null,
+      contributorWallet:
+        contribution.contributorWallet,
 
-          total: {
-            $sum: '$amount',
-          },
-        },
-      },
-    ])
+      recipientWallet:
+        circle.goalOwnerWallet,
 
-  const raisedAmount =
-    contributionTotal[0]?.total ||
-    0
+      amount:
+        contribution.amount,
 
-  const newRaisedAmount =
-    raisedAmount +
-    contribution.amount
+      memo:
+        contribution.memo,
+    })
 
-  if (
-    newRaisedAmount >
-    circle.targetAmount
-  ) {
-    const error = new Error(
-      'Confirming this contribution would exceed the Circle target',
-    )
+  if (!verification.valid) {
+    const reason =
+      verification.reason ||
+      'Nimiq transaction verification failed'
 
-    error.statusCode = 400
+    const error =
+      new Error(reason)
+
+    /*
+     * A transaction may already be broadcast
+     * but not yet appear in the recipient's
+     * blockchain history. This is temporary and
+     * should be retried rather than treated as
+     * a permanently invalid contribution.
+     */
+    const transactionNotFound =
+      reason
+        .toLowerCase()
+        .includes('transaction was not found')
+
+    if (transactionNotFound) {
+      error.statusCode = 409
+      error.code =
+        'TRANSACTION_NOT_FOUND'
+      error.retryable = true
+    } else {
+      /*
+       * The transaction was found, but failed
+       * one of the actual contribution checks.
+       */
+      error.statusCode = 400
+      error.retryable = false
+    }
+
     throw error
   }
 
@@ -400,19 +458,6 @@ async function confirmContribution(
     new Date()
 
   await contribution.save()
-
-  if (
-    newRaisedAmount >=
-    circle.targetAmount
-  ) {
-    circle.status =
-      'completed'
-
-    circle.completedAt =
-      new Date()
-
-    await circle.save()
-  }
 
   return contribution
 }
@@ -442,6 +487,7 @@ async function getCircleContributions(
 ) {
   return Contribution.find({
     circleId,
+
     status: 'confirmed',
   })
     .populate(

@@ -24,7 +24,7 @@ const circleSchema = new mongoose.Schema(
       default: '',
     },
 
-    // Amount is stored in Luna, the smallest NIM unit.
+    // Amounts are stored in Luna, the smallest NIM unit.
     targetAmount: {
       type: Number,
       required: true,
@@ -36,6 +36,7 @@ const circleSchema = new mongoose.Schema(
       required: true,
     },
 
+    // The wallet that created the Circle.
     creatorWallet: {
       type: String,
       required: true,
@@ -50,11 +51,28 @@ const circleSchema = new mongoose.Schema(
       required: true,
     },
 
-    recipientWallet: {
+    // The wallet that the goal is for and that receives contributions.
+    goalOwnerWallet: {
       type: String,
       required: true,
+      index: true,
       lowercase: true,
       trim: true,
+    },
+
+    goalOwnerUserId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+      index: true,
+    },
+
+    // The creator's committed amount, stored in Luna.
+    // This value is intended to be fixed after Circle creation.
+    creatorCommitment: {
+      type: Number,
+      required: true,
+      min: 0,
     },
 
     status: {

@@ -24,6 +24,14 @@ const contributionSchema = new mongoose.Schema(
       index: true,
     },
 
+    // The wallet that actually receives the contribution.
+    recipientWallet: {
+      type: String,
+      required: true,
+      lowercase: true,
+      trim: true,
+    },
+
     // Amount is stored in Luna.
     amount: {
       type: Number,
@@ -37,6 +45,14 @@ const contributionSchema = new mongoose.Schema(
       unique: true,
       index: true,
       trim: true,
+    },
+
+    // Memo/data attached to the Nimiq transaction.
+    // Used to associate the transaction with the Circle.
+    memo: {
+      type: String,
+      trim: true,
+      default: '',
     },
 
     status: {

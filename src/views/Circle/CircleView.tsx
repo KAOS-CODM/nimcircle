@@ -1,84 +1,327 @@
-import { useState } from 'react'
+import {
+  useEffect,
+  useState,
+} from 'react'
+
 import type { Circle } from '../../types/circle'
+
+import ContributeModal from '../../components/ContributeModal'
+
+import {
+  apiGetCircle,
+} from '../../lib/api'
 
 interface CircleViewProps {
   circle: Circle
   onBack: () => void
-  currentAddress?: string
+  currentAddress: string
+  currentUserId: string
+}
+
+interface CircleStats {
+  raisedAmount: number
+  targetAmount: number
+  remainingAmount: number
+  progressPercentage: number
+  contributorCount: number
+  creatorCommitment: number
+}
+
+interface CircleContribution {
+  _id: string
+  circleId: string
+  contributorWallet: string
+  contributorUserId: string
+  recipientWallet: string
+  amount: number
+  transactionHash: string
+  memo: string
+  status:
+    | 'pending'
+    | 'confirmed'
+    | 'failed'
+  confirmedAt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+const EMPTY_STATS: CircleStats = {
+  raisedAmount: 0,
+  targetAmount: 0,
+  remainingAmount: 0,
+  progressPercentage: 0,
+  contributorCount: 0,
+  creatorCommitment: 0,
+}
+
+function normalizeWalletAddress(
+  address: string,
+): string {
+  return address
+    .trim()
+    .replace(/\s+/g, '')
+    .toLowerCase()
 }
 
 export default function CircleView({
   circle,
   onBack,
   currentAddress,
+  currentUserId,
 }: CircleViewProps) {
-  const [now] = useState(() => Date.now())
+  const [now] =
+    useState(() => Date.now())
 
-  const raisedAmount: number = 0
-  const contributorCount: number = 0
+  const [
+    showContributeModal,
+    setShowContributeModal,
+  ] = useState(false)
 
-  const targetAmount = circle.targetAmount
+  const [
+    stats,
+    setStats,
+  ] = useState<CircleStats>({
+    ...EMPTY_STATS,
+
+    targetAmount:
+      circle.targetAmount,
+
+    creatorCommitment:
+      circle.creatorCommitment,
+  })
+
+  const [
+    contributions,
+    setContributions,
+  ] = useState<
+    CircleContribution[]
+  >([])
+
+  const [
+    loadingCircle,
+    setLoadingCircle,
+  ] = useState(true)
+
+  const [
+    circleError,
+    setCircleError,
+  ] = useState<string | null>(null)
+
+  const [
+    refreshingCircle,
+    setRefreshingCircle,
+  ] = useState(false)
+
+  async function loadCircle() {
+    setRefreshingCircle(true)
+    setCircleError(null)
+
+    try {
+      const response =
+        await apiGetCircle(
+          circle.id,
+        )
+
+      setStats(
+        response.stats,
+      )
+
+      setContributions(
+        response.contributions,
+      )
+    } catch (requestError) {
+      const message =
+        requestError instanceof Error
+          ? requestError.message
+          : String(requestError)
+
+      setCircleError(message)
+    } finally {
+      setRefreshingCircle(false)
+    }
+  }
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadInitialCircle() {
+      try {
+        const response =
+          await apiGetCircle(
+            circle.id,
+          )
+
+        if (cancelled) {
+          return
+        }
+
+        setStats(
+          response.stats,
+        )
+
+        setContributions(
+          response.contributions,
+        )
+
+        setCircleError(null)
+      } catch (requestError) {
+        if (cancelled) {
+          return
+        }
+
+        const message =
+          requestError instanceof Error
+            ? requestError.message
+            : String(requestError)
+
+        setCircleError(message)
+      } finally {
+        if (!cancelled) {
+          setLoadingCircle(false)
+        }
+      }
+    }
+
+    void loadInitialCircle()
+
+    return () => {
+      cancelled = true
+    }
+  }, [circle.id])
+
+  /*
+   * The backend is the source of truth for these values.
+   *
+   * The Circle object's values are only used as the
+   * initial fallback while the details request loads.
+   */
+  const raisedAmount =
+    stats.raisedAmount
+
+  const targetAmount =
+    loadingCircle
+      ? circle.targetAmount
+      : stats.targetAmount
+
+  const remainingAmount =
+    Math.max(
+      0,
+      stats.remainingAmount,
+    )
+
+  const contributorCount =
+    stats.contributorCount
+
+  const creatorCommitment =
+    loadingCircle
+      ? circle.creatorCommitment
+      : stats.creatorCommitment
 
   const progress =
-    targetAmount > 0
-      ? Math.min(
+    loadingCircle
+      ? targetAmount > 0
+        ? Math.min(
+            100,
+            Math.round(
+              (raisedAmount /
+                targetAmount) *
+                100,
+            ),
+          )
+        : 0
+      : Math.min(
           100,
-          Math.round(
-            (raisedAmount / targetAmount) * 100,
+          Math.max(
+            0,
+            Math.round(
+              stats.progressPercentage,
+            ),
           ),
         )
-      : 0
 
-  const remainingAmount = Math.max(
-    0,
-    targetAmount - raisedAmount,
-  )
+  const deadline =
+    new Date(
+      circle.deadline,
+    )
 
-  const deadline = new Date(circle.deadline)
+  const deadlineTimestamp =
+    deadline.getTime()
 
-  const deadlineTimestamp = deadline.getTime()
+  const hasValidDeadline =
+    !Number.isNaN(
+      deadlineTimestamp,
+    )
 
-  const hasValidDeadline = !Number.isNaN(
-    deadlineTimestamp,
-  )
+  const normalizedCurrentAddress =
+    normalizeWalletAddress(
+      currentAddress,
+    )
+
+  const normalizedCreatorAddress =
+    normalizeWalletAddress(
+      circle.creator,
+    )
+
+  const normalizedRecipientAddress =
+    normalizeWalletAddress(
+      circle.recipient,
+    )
 
   const isCreator =
-    currentAddress?.toLowerCase() ===
-    circle.creator.toLowerCase()
+    normalizedCurrentAddress ===
+    normalizedCreatorAddress
+
+  const isCreatorGoalOwner =
+    isCreator &&
+    normalizedCurrentAddress ===
+      normalizedRecipientAddress
+
+  const canCreatorContribute =
+    isCreator &&
+    !isCreatorGoalOwner &&
+    creatorCommitment > 0 &&
+    creatorCommitment <=
+      remainingAmount
 
   const isCompleted =
-    raisedAmount >= targetAmount
+    raisedAmount >=
+    targetAmount
 
   const isExpired =
     hasValidDeadline &&
     deadlineTimestamp < now &&
     !isCompleted
 
-  const deadlineLabel = hasValidDeadline
-    ? deadline.toLocaleDateString(undefined, {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-      })
-    : circle.deadline
+  const deadlineLabel =
+    hasValidDeadline
+      ? deadline.toLocaleDateString(
+          undefined,
+          {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+          },
+        )
+      : circle.deadline
 
-  const deadlineStatus = getDeadlineStatus(
-    deadlineTimestamp,
-    isCompleted,
-    now,
-  )
+  const deadlineStatus =
+    getDeadlineStatus(
+      deadlineTimestamp,
+      isCompleted,
+      now,
+    )
 
   async function handleShare() {
     const shareUrl =
       `${window.location.origin}/circle/${encodeURIComponent(
         circle.id,
       )}`
-  
+
     try {
       await navigator.clipboard.writeText(
         shareUrl,
       )
-  
+
       window.alert(
         'Circle link copied!',
       )
@@ -88,6 +331,12 @@ export default function CircleView({
         shareUrl,
       )
     }
+  }
+
+  async function handleContributionSuccess() {
+    setShowContributeModal(false)
+
+    await loadCircle()
   }
 
   return (
@@ -100,20 +349,62 @@ export default function CircleView({
         ← Back
       </button>
 
+      {circleError && (
+        <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4">
+          <p className="text-sm font-semibold text-red-700">
+            Unable to refresh this Circle.
+          </p>
+
+          <p className="mt-1 text-xs leading-5 text-red-600">
+            {circleError}
+          </p>
+
+          <button
+            type="button"
+            onClick={() =>
+              void loadCircle()
+            }
+            disabled={refreshingCircle}
+            className="mt-3 rounded-xl bg-red-100 px-4 py-2 text-xs font-bold text-red-700 disabled:opacity-50"
+          >
+            {refreshingCircle
+              ? 'Retrying...'
+              : 'Retry'}
+          </button>
+        </div>
+      )}
+
       <GoalHeader
         circle={circle}
-        raisedAmount={raisedAmount}
+        raisedAmount={
+          raisedAmount
+        }
+        targetAmount={
+          targetAmount
+        }
         progress={progress}
-        remainingAmount={remainingAmount}
-        deadlineStatus={deadlineStatus}
-        isCompleted={isCompleted}
-        isExpired={isExpired}
+        remainingAmount={
+          remainingAmount
+        }
+        deadlineStatus={
+          deadlineStatus
+        }
+        isCompleted={
+          isCompleted
+        }
+        isExpired={
+          isExpired
+        }
       />
 
       <div className="mt-4 grid grid-cols-2 gap-3">
         <StatCard
           label="Contributors"
-          value={contributorCount.toString()}
+          value={
+            loadingCircle
+              ? '...'
+              : contributorCount.toString()
+          }
           description={
             contributorCount === 1
               ? 'person contributing'
@@ -124,7 +415,9 @@ export default function CircleView({
         <StatCard
           label="Deadline"
           value={deadlineLabel}
-          description={deadlineStatus.label}
+          description={
+            deadlineStatus.label
+          }
         />
       </div>
 
@@ -153,14 +446,21 @@ export default function CircleView({
           />
 
           <InfoRow
-            label="Recipient"
+            label="Goal owner"
             value={circle.recipient}
             mono
           />
 
           <InfoRow
+            label="Creator commitment"
+            value={`${creatorCommitment.toLocaleString()} NIM`}
+          />
+
+          <InfoRow
             label="Created"
-            value={formatDate(circle.createdAt)}
+            value={formatDate(
+              circle.createdAt,
+            )}
           />
         </div>
       </div>
@@ -178,11 +478,25 @@ export default function CircleView({
           </div>
 
           <span className="rounded-full bg-[#f7f8f5] px-3 py-1 text-xs font-bold text-[#607060]">
-            {contributorCount}
+            {loadingCircle
+              ? '...'
+              : contributorCount}
           </span>
         </div>
 
-        <EmptyContributors />
+        {loadingCircle ? (
+          <LoadingBlock
+            message="Loading contributors..."
+          />
+        ) : contributions.length === 0 ? (
+          <EmptyContributors />
+        ) : (
+          <ContributorList
+            contributions={
+              contributions
+            }
+          />
+        )}
       </div>
 
       <div className="mt-4 rounded-3xl border border-black/5 bg-white p-5 shadow-sm">
@@ -192,44 +506,60 @@ export default function CircleView({
           </h2>
 
           <p className="mt-1 text-xs text-[#607060]">
-            NIM payments recorded for this Circle
+            Confirmed NIM payments recorded for this Circle
           </p>
         </div>
 
-        <EmptyContributionHistory />
+        {loadingCircle ? (
+          <LoadingBlock
+            message="Loading contribution history..."
+          />
+        ) : contributions.length === 0 ? (
+          <EmptyContributionHistory />
+        ) : (
+          <ContributionHistory
+            contributions={
+              contributions
+            }
+          />
+        )}
       </div>
 
-      {isCreator && !isCompleted && (
-        <div className="mt-4 rounded-3xl border border-black/5 bg-white p-5 shadow-sm">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#607060]">
-              Creator controls
-            </p>
+      {isCreator &&
+        !isCompleted && (
+          <div className="mt-4 rounded-3xl border border-black/5 bg-white p-5 shadow-sm">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#607060]">
+                Creator controls
+              </p>
 
-            <h2 className="mt-2 text-lg font-bold">
-              Manage your Circle
-            </h2>
+              <h2 className="mt-2 text-lg font-bold">
+                Manage your Circle
+              </h2>
 
-            <p className="mt-2 text-sm leading-6 text-[#607060]">
-              You can extend the deadline if your group needs
-              more time to reach the goal.
+              <p className="mt-2 text-sm leading-6 text-[#607060]">
+                Your commitment is fixed at{' '}
+                <strong className="text-[#162018]">
+                  {creatorCommitment.toLocaleString()}{' '}
+                  NIM
+                </strong>
+                . It cannot be changed after the Circle is created.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              disabled
+              className="mt-5 min-h-11 w-full rounded-2xl border border-black/10 bg-[#f7f8f5] px-5 text-sm font-bold text-[#162018] opacity-60"
+            >
+              Extend deadline
+            </button>
+
+            <p className="mt-2 text-center text-xs text-[#607060]">
+              Deadline management will be available in the next stage.
             </p>
           </div>
-
-          <button
-            type="button"
-            disabled
-            className="mt-5 min-h-11 w-full rounded-2xl border border-black/10 bg-[#f7f8f5] px-5 text-sm font-bold text-[#162018] opacity-60"
-          >
-            Extend deadline
-          </button>
-
-          <p className="mt-2 text-center text-xs text-[#607060]">
-            Deadline management will be available in the next
-            stage.
-          </p>
-        </div>
-      )}
+        )}
 
       <div className="mt-6">
         {isCompleted ? (
@@ -240,26 +570,84 @@ export default function CircleView({
           <>
             <button
               type="button"
-              disabled
-              className="min-h-13 w-full rounded-2xl bg-[#c7f36b] px-5 py-3 text-sm font-bold text-[#162018] shadow-sm transition-transform active:scale-[0.98] disabled:opacity-70"
+              onClick={() =>
+                setShowContributeModal(true)
+              }
+              disabled={
+                loadingCircle ||
+                remainingAmount <= 0 ||
+                (isCreator &&
+                  !canCreatorContribute)
+              }
+              className="min-h-13 w-full rounded-2xl bg-[#c7f36b] px-5 py-3 text-sm font-bold text-[#162018] shadow-sm transition-transform active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Contribute NIM
+              {isCreator
+                ? canCreatorContribute
+                  ? `Contribute ${creatorCommitment.toLocaleString()} NIM`
+                  : 'Creator commitment unavailable'
+                : remainingAmount <= 0
+                  ? 'Goal fully funded'
+                  : 'Contribute NIM'}
             </button>
 
             <p className="mt-3 text-center text-xs leading-5 text-[#607060]">
-              Contributions will use your connected Nimiq Pay
-              wallet and require your approval.
+              {isCreator
+                ? canCreatorContribute
+                  ? 'Your fixed creator commitment will be contributed to the goal owner.'
+                  : isCreatorGoalOwner
+                    ? 'You are the goal owner, so no self-payment is required.'
+                    : 'You have no available creator commitment for this Circle.'
+                : 'Contributions will use your connected Nimiq Pay wallet and require your approval.'}
             </p>
           </>
         )}
       </div>
+
+      {showContributeModal &&
+        currentAddress && (
+          <ContributeModal
+            circleId={
+              circle.id
+            }
+            recipient={
+              normalizedRecipientAddress
+            }
+            remainingAmount={
+              remainingAmount
+            }
+            contributorWallet={
+              normalizedCurrentAddress
+            }
+            contributorUserId={
+              currentUserId
+            }
+            fixedAmountNim={
+              isCreator
+                ? creatorCommitment
+                : undefined
+            }
+            onClose={() =>
+              setShowContributeModal(
+                false,
+              )
+            }
+            onSuccess={
+              handleContributionSuccess
+            }
+          />
+        )}
     </section>
   )
 }
 
+/* -------------------------------------------------------------------------- */
+/* Goal Header                                                                */
+/* -------------------------------------------------------------------------- */
+
 function GoalHeader({
   circle,
   raisedAmount,
+  targetAmount,
   progress,
   remainingAmount,
   deadlineStatus,
@@ -268,17 +656,19 @@ function GoalHeader({
 }: {
   circle: Circle
   raisedAmount: number
+  targetAmount: number
   progress: number
   remainingAmount: number
   deadlineStatus: DeadlineStatus
   isCompleted: boolean
   isExpired: boolean
 }) {
-  const status = isCompleted
-    ? 'Completed'
-    : isExpired
-      ? 'Expired'
-      : 'Active'
+  const status =
+    isCompleted
+      ? 'Completed'
+      : isExpired
+        ? 'Expired'
+        : 'Active'
 
   return (
     <div className="rounded-4xl bg-[#162018] p-6 text-white shadow-sm">
@@ -319,7 +709,8 @@ function GoalHeader({
           </p>
 
           <p className="mt-1 text-3xl font-bold">
-            {raisedAmount.toLocaleString()} NIM
+            {raisedAmount.toLocaleString()}{' '}
+            NIM
           </p>
         </div>
 
@@ -329,7 +720,8 @@ function GoalHeader({
           </p>
 
           <p className="mt-1 text-lg font-bold">
-            {circle.targetAmount.toLocaleString()} NIM
+            {targetAmount.toLocaleString()}{' '}
+            NIM
           </p>
         </div>
       </div>
@@ -374,6 +766,10 @@ function GoalHeader({
   )
 }
 
+/* -------------------------------------------------------------------------- */
+/* Stats                                                                      */
+/* -------------------------------------------------------------------------- */
+
 function StatCard({
   label,
   value,
@@ -400,6 +796,10 @@ function StatCard({
   )
 }
 
+/* -------------------------------------------------------------------------- */
+/* Information rows                                                           */
+/* -------------------------------------------------------------------------- */
+
 function InfoRow({
   label,
   value,
@@ -417,7 +817,9 @@ function InfoRow({
 
       <span
         className={`max-w-[68%] break-all text-right text-sm text-[#162018]/70 ${
-          mono ? 'font-mono text-xs' : 'font-medium'
+          mono
+            ? 'font-mono text-xs'
+            : 'font-medium'
         }`}
       >
         {value}
@@ -425,6 +827,165 @@ function InfoRow({
     </div>
   )
 }
+
+/* -------------------------------------------------------------------------- */
+/* Loading                                                                    */
+/* -------------------------------------------------------------------------- */
+
+function LoadingBlock({
+  message,
+}: {
+  message: string
+}) {
+  return (
+    <div className="mt-5 rounded-2xl bg-[#f7f8f5] p-5 text-center">
+      <div className="mx-auto h-6 w-6 animate-pulse rounded-full bg-[#dff5a8]" />
+
+      <p className="mt-3 text-xs font-semibold text-[#607060]">
+        {message}
+      </p>
+    </div>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/* Contributors                                                               */
+/* -------------------------------------------------------------------------- */
+
+function ContributorList({
+  contributions,
+}: {
+  contributions: CircleContribution[]
+}) {
+  const uniqueContributors =
+    Array.from(
+      new Map(
+        contributions.map(
+          (contribution) => [
+            contribution.contributorWallet.toLowerCase(),
+            contribution,
+          ],
+        ),
+      ).values(),
+    )
+
+  return (
+    <div className="mt-5 space-y-3">
+      {uniqueContributors.map(
+        (contribution) => (
+          <div
+            key={
+              contribution.contributorWallet
+            }
+            className="flex items-center justify-between gap-4 rounded-2xl bg-[#f7f8f5] p-4"
+          >
+            <div className="min-w-0">
+              <p className="text-sm font-bold">
+                Contributor
+              </p>
+
+              <p className="mt-1 truncate font-mono text-xs text-[#607060]">
+                {
+                  contribution.contributorWallet
+                }
+              </p>
+            </div>
+
+            <span className="shrink-0 text-sm font-bold text-[#162018]">
+              {getContributorTotal(
+                contributions,
+                contribution.contributorWallet,
+              ).toLocaleString()}{' '}
+              NIM
+            </span>
+          </div>
+        ),
+      )}
+    </div>
+  )
+}
+
+function getContributorTotal(
+  contributions: CircleContribution[],
+  wallet: string,
+) {
+  return contributions
+    .filter(
+      (contribution) =>
+        contribution.contributorWallet.toLowerCase() ===
+        wallet.toLowerCase(),
+    )
+    .reduce(
+      (total, contribution) =>
+        total +
+        contribution.amount / 100_000,
+      0,
+    )
+}
+
+/* -------------------------------------------------------------------------- */
+/* Contribution history                                                       */
+/* -------------------------------------------------------------------------- */
+
+function ContributionHistory({
+  contributions,
+}: {
+  contributions: CircleContribution[]
+}) {
+  return (
+    <div className="mt-5 space-y-3">
+      {contributions.map(
+        (contribution) => (
+          <div
+            key={
+              contribution._id
+            }
+            className="rounded-2xl border border-black/5 bg-[#f7f8f5] p-4"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-sm font-bold">
+                  Contribution
+                </p>
+
+                <p className="mt-1 font-mono text-xs text-[#607060]">
+                  {truncateHash(
+                    contribution.transactionHash,
+                  )}
+                </p>
+              </div>
+
+              <p className="shrink-0 text-sm font-bold">
+                {(
+                  contribution.amount /
+                  100_000
+                ).toLocaleString()}{' '}
+                NIM
+              </p>
+            </div>
+
+            <div className="mt-3 flex items-center justify-between gap-3 text-xs text-[#607060]">
+              <span>
+                {formatDateTime(
+                  contribution.confirmedAt ||
+                    contribution.createdAt,
+                )}
+              </span>
+
+              <span className="rounded-full bg-[#dff5a8] px-2.5 py-1 font-bold text-[#162018]">
+                Confirmed
+              </span>
+            </div>
+          </div>
+        ),
+      )}
+    </div>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/* Empty states                                                               */
+/* -------------------------------------------------------------------------- */
 
 function EmptyContributors() {
   return (
@@ -452,12 +1013,15 @@ function EmptyContributionHistory() {
       </p>
 
       <p className="mt-1 text-xs leading-5 text-[#607060]">
-        Once someone contributes NIM, their payment will appear
-        here.
+        Once someone contributes NIM, their payment will appear here.
       </p>
     </div>
   )
 }
+
+/* -------------------------------------------------------------------------- */
+/* Circle states                                                              */
+/* -------------------------------------------------------------------------- */
 
 function CompletedState() {
   return (
@@ -495,6 +1059,10 @@ function ExpiredState() {
   )
 }
 
+/* -------------------------------------------------------------------------- */
+/* Deadline                                                                   */
+/* -------------------------------------------------------------------------- */
+
 interface DeadlineStatus {
   label: string
   icon: string
@@ -512,14 +1080,18 @@ function getDeadlineStatus(
     }
   }
 
-  if (Number.isNaN(timestamp)) {
+  if (
+    Number.isNaN(timestamp)
+  ) {
     return {
-      label: 'Deadline unavailable',
+      label:
+        'Deadline unavailable',
       icon: '?',
     }
   }
 
-  const difference = timestamp - now
+  const difference =
+    timestamp - now
 
   if (difference <= 0) {
     return {
@@ -529,19 +1101,22 @@ function getDeadlineStatus(
   }
 
   const daysRemaining =
-    difference / (1000 * 60 * 60 * 24)
+    difference /
+    (1000 * 60 * 60 * 24)
 
   if (daysRemaining <= 1) {
     return {
-      label: 'Less than a day left',
+      label:
+        'Less than a day left',
       icon: '!',
     }
   }
 
   if (daysRemaining <= 7) {
-    const roundedDays = Math.ceil(
-      daysRemaining,
-    )
+    const roundedDays =
+      Math.ceil(
+        daysRemaining,
+      )
 
     return {
       label: `${roundedDays} days left`,
@@ -549,26 +1124,81 @@ function getDeadlineStatus(
     }
   }
 
-  const roundedDays = Math.ceil(
-    daysRemaining,
-  )
+  const roundedDays =
+    Math.ceil(
+      daysRemaining,
+    )
 
   return {
-    label: `${roundedDays} days left`,
+    label:
+      `${roundedDays} days left`,
     icon: '○',
   }
 }
 
-function formatDate(value: string) {
-  const date = new Date(value)
+/* -------------------------------------------------------------------------- */
+/* Formatting                                                                 */
+/* -------------------------------------------------------------------------- */
 
-  if (Number.isNaN(date.getTime())) {
+function formatDate(
+  value: string,
+) {
+  const date =
+    new Date(value)
+
+  if (
+    Number.isNaN(
+      date.getTime(),
+    )
+  ) {
     return value
   }
 
-  return date.toLocaleDateString(undefined, {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  })
+  return date.toLocaleDateString(
+    undefined,
+    {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    },
+  )
+}
+
+function formatDateTime(
+  value: string,
+) {
+  const date =
+    new Date(value)
+
+  if (
+    Number.isNaN(
+      date.getTime(),
+    )
+  ) {
+    return value
+  }
+
+  return date.toLocaleString(
+    undefined,
+    {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    },
+  )
+}
+
+function truncateHash(
+  hash: string,
+) {
+  if (hash.length <= 18) {
+    return hash
+  }
+
+  return `${hash.slice(
+    0,
+    10,
+  )}...${hash.slice(-8)}`
 }

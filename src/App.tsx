@@ -4,29 +4,26 @@ import {
 } from 'react'
 import type { ReactNode } from 'react'
 
+// Diagnostics temporarily disabled.
+// import { testNimiqProvider } from './lib/nimiqDiagnostics'
+
 import AppHeader from './components/AppHeader'
 import BottomNavigation from './components/BottomNavigation'
 import type { NavigationTab } from './components/BottomNavigation'
-
 import ProfileSetup from './components/ProfileSetup'
 import WelcomeBackModal from './components/WelcomeBackModal'
-
 import ConnectWalletView from './views/Wallet/ConnectWalletView'
 import WalletRestoringView from './views/Wallet/WalletRestoringView'
-
 import HomeView from './views/Home/HomeView'
 import CreateCircleView from './views/CreateCircle/CreateCircleView'
 import CircleView from './views/Circle/CircleView'
 import CirclesView from './views/Circles/CirclesView'
 import ProfileView from './views/Profile/ProfileView'
-
 import { useWallet } from './hooks/useWallet'
-
 import {
   getSession,
   saveSession,
 } from './lib/userStorage'
-
 import {
   apiCreateCircle,
   apiCreateUser,
@@ -34,7 +31,6 @@ import {
   apiGetUser,
   apiGetCreatedCircles,
 } from './lib/api'
-
 import type { Circle } from './types/circle'
 import type { User } from './types/user'
 
@@ -45,6 +41,14 @@ type Screen =
 interface ConnectedAppProps {
   address: string
   user: User
+}
+
+function normalizeWalletAddress(
+  address: string,
+): string {
+  return address
+    .trim()
+    .replace(/\s+/g, '')
 }
 
 /* -------------------------------------------------------------------------- */
@@ -168,7 +172,9 @@ function ProfileGate({
       const newUser =
         await apiCreateUser({
           walletAddress:
-            address,
+            normalizeWalletAddress(
+              address,
+            ),
           username:
             data.username.trim(),
           displayName:
@@ -275,7 +281,9 @@ function ConnectedApp({
       return null
     }
 
-    return decodeURIComponent(match[1])
+    return decodeURIComponent(
+      match[1],
+    )
   }
 
   const sharedCircleId =
@@ -296,7 +304,7 @@ function ConnectedApp({
   )
 
   /*
-   * Circles are now loaded from the backend
+   * Circles are loaded from the backend
    * instead of being persisted as the primary
    * source of truth in localStorage.
    */
@@ -319,10 +327,537 @@ function ConnectedApp({
     Boolean(sharedCircleId),
   )
 
+  /* ------------------------------------------------------------------------ */
+  /* Nimiq Provider Diagnostics                                               */
+  /* ------------------------------------------------------------------------ */
+
   /*
-   * Load circles created by this wallet
-   * from the backend.
+   * Diagnostics are temporarily disabled.
+   *
+   * The provider/payment flow has already been
+   * verified, so the diagnostic UI is being kept
+   * here for possible future debugging without
+   * being part of the normal application flow.
    */
+
+  /*
+  const [
+    showDiagnostics,
+    setShowDiagnostics,
+  ] = useState(false)
+
+  const [
+    diagnosticResult,
+    setDiagnosticResult,
+  ] = useState<
+    Awaited<
+      ReturnType<typeof testNimiqProvider>
+    > | null
+  >(null)
+
+  const [
+    diagnosticLoading,
+    setDiagnosticLoading,
+  ] = useState(false)
+
+  async function runDiagnostics() {
+    setDiagnosticLoading(true)
+    setDiagnosticResult(null)
+    setShowDiagnostics(true)
+
+    try {
+      const result =
+        await testNimiqProvider()
+
+      setDiagnosticResult(result)
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : String(error)
+
+      setDiagnosticResult({
+        success: false,
+        message:
+          'Unexpected diagnostic error.',
+        details: {
+          providerType: 'Unknown',
+          providerKeys: [],
+          prototypeKeys: [],
+          methods: {},
+          consensusEstablished:
+            undefined,
+          adapterType: 'Unknown',
+          adapterKeys: [],
+          adapterPrototypeKeys: [],
+          adapterStrategy: 'Unknown',
+          adapterHandlerType: 'Unknown',
+          adapterHandlerKeys: [],
+          adapterCallbackType: 'Unknown',
+          adapterCallbackKeys: [],
+          callbackMapSize: null,
+          callbackMapKeys: [],
+          handlerSource: '',
+          adapterRequestSource: '',
+          directRequestTest: {
+            attempted: false,
+            method: 'getBlockNumber',
+            success: false,
+            result: '',
+          },
+          directTransactionTest: {
+            attempted: false,
+            method: 'sendBasicTransaction',
+            success: false,
+            result: '',
+            error: message,
+          },
+          error: message,
+        },
+      })
+    } finally {
+      setDiagnosticLoading(false)
+    }
+  }
+
+  function renderDiagnosticScreen() {
+    if (diagnosticLoading) {
+      return (
+        <div className="flex min-h-[70vh] items-center justify-center">
+          <div className="w-full rounded-3xl bg-white p-6 text-center shadow-sm">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#eef2ed]">
+              <span className="text-xl">
+                🔎
+              </span>
+            </div>
+
+            <h1 className="mt-4 text-lg font-semibold text-[#162018]">
+              Inspecting Nimiq provider
+            </h1>
+
+            <p className="mt-2 text-sm leading-6 text-[#607060]">
+              Reading the provider exposed by
+              Nimiq Pay.
+            </p>
+
+            <p className="mt-4 text-xs text-[#8a948a]">
+              No payment is being sent.
+            </p>
+          </div>
+        </div>
+      )
+    }
+
+    if (!diagnosticResult) {
+      return null
+    }
+
+    const {
+      success,
+      message,
+      details,
+    } = diagnosticResult
+
+    return (
+      <div className="space-y-4 pb-8">
+        <button
+          type="button"
+          onClick={() => {
+            setShowDiagnostics(false)
+            setDiagnosticResult(null)
+          }}
+          className="flex items-center gap-2 py-2 text-sm font-semibold text-[#162018]"
+        >
+          <span>←</span>
+          Back
+        </button>
+
+        <div className="rounded-3xl bg-white p-5 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+                success
+                  ? 'bg-green-100'
+                  : 'bg-red-100'
+              }`}
+            >
+              <span>
+                {success ? '✓' : '×'}
+              </span>
+            </div>
+
+            <div>
+              <h1 className="text-lg font-semibold text-[#162018]">
+                Nimiq Provider Diagnostic
+              </h1>
+
+              <p className="mt-1 text-sm leading-5 text-[#607060]">
+                {message}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-3xl bg-white p-5 shadow-sm">
+          <h2 className="text-sm font-semibold text-[#162018]">
+            Provider
+          </h2>
+
+          <div className="mt-4 space-y-3">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-[#8a948a]">
+                Constructor
+              </p>
+
+              <p className="mt-1 break-all rounded-xl bg-[#f7f8f5] px-3 py-2 font-mono text-sm text-[#162018]">
+                {details.providerType}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-[#8a948a]">
+                Consensus
+              </p>
+
+              <p
+                className={`mt-1 rounded-xl px-3 py-2 text-sm font-semibold ${
+                  details.consensusEstablished
+                    ? 'bg-green-50 text-green-700'
+                    : 'bg-red-50 text-red-700'
+                }`}
+              >
+                {details.consensusEstablished ===
+                undefined
+                  ? 'Not checked'
+                  : details.consensusEstablished
+                    ? 'Established'
+                    : 'Not established'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-3xl bg-white p-5 shadow-sm">
+          <h2 className="text-sm font-semibold text-[#162018]">
+            Transaction methods
+          </h2>
+
+          <div className="mt-4 space-y-2">
+            {Object.entries(
+              details.methods,
+            ).map(([method, type]) => (
+              <div
+                key={method}
+                className="flex items-center justify-between gap-4 rounded-xl bg-[#f7f8f5] px-3 py-3"
+              >
+                <span className="break-all font-mono text-xs text-[#162018]">
+                  {method}
+                </span>
+
+                <span
+                  className={`shrink-0 text-xs font-semibold ${
+                    type === 'function'
+                      ? 'text-green-700'
+                      : 'text-red-700'
+                  }`}
+                >
+                  {type}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-3xl bg-white p-5 shadow-sm">
+          <h2 className="text-sm font-semibold text-[#162018]">
+            Provider keys
+          </h2>
+
+          {details.providerKeys.length === 0 ? (
+            <p className="mt-3 text-sm text-[#607060]">
+              No enumerable properties.
+            </p>
+          ) : (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {details.providerKeys.map(
+                (key) => (
+                  <span
+                    key={key}
+                    className="rounded-lg bg-[#f7f8f5] px-2.5 py-1.5 font-mono text-xs text-[#162018]"
+                  >
+                    {key}
+                  </span>
+                ),
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-3xl bg-white p-5 shadow-sm">
+          <h2 className="text-sm font-semibold text-[#162018]">
+            Prototype methods
+          </h2>
+
+          {details.prototypeKeys.length === 0 ? (
+            <p className="mt-3 text-sm text-[#607060]">
+              No prototype methods found.
+            </p>
+          ) : (
+            <div className="mt-3 space-y-1.5">
+              {details.prototypeKeys.map(
+                (key) => (
+                  <div
+                    key={key}
+                    className="rounded-xl bg-[#f7f8f5] px-3 py-2 font-mono text-xs text-[#162018]"
+                  >
+                    {key}
+                  </div>
+                ),
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-3xl bg-white p-5 shadow-sm">
+          <h2 className="text-sm font-semibold text-[#162018]">
+            Adapter
+          </h2>
+
+          <div className="mt-4 space-y-4">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-[#8a948a]">
+                Constructor
+              </p>
+
+              <p className="mt-1 break-all rounded-xl bg-[#f7f8f5] px-3 py-2 font-mono text-sm text-[#162018]">
+                {details.adapterType}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-[#8a948a]">
+                Strategy
+              </p>
+
+              <p className="mt-1 break-all rounded-xl bg-[#f7f8f5] px-3 py-2 font-mono text-sm text-[#162018]">
+                {details.adapterStrategy}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-[#8a948a]">
+                Handler type
+              </p>
+
+              <p className="mt-1 break-all rounded-xl bg-[#f7f8f5] px-3 py-2 font-mono text-sm text-[#162018]">
+                {details.adapterHandlerType}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-[#8a948a]">
+                Handler keys
+              </p>
+
+              {details.adapterHandlerKeys.length === 0 ? (
+                <p className="mt-1 rounded-xl bg-[#f7f8f5] px-3 py-2 font-mono text-sm text-[#8a948a]">
+                  None
+                </p>
+              ) : (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {details.adapterHandlerKeys.map(
+                    (key) => (
+                      <span
+                        key={key}
+                        className="rounded-lg bg-[#f7f8f5] px-2.5 py-1.5 font-mono text-xs text-[#162018]"
+                      >
+                        {key}
+                      </span>
+                    ),
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-[#8a948a]">
+                Callback type
+              </p>
+
+              <p className="mt-1 break-all rounded-xl bg-[#f7f8f5] px-3 py-2 font-mono text-sm text-[#162018]">
+                {details.adapterCallbackType}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-[#8a948a]">
+                Callback keys
+              </p>
+
+              {details.adapterCallbackKeys.length === 0 ? (
+                <p className="mt-1 rounded-xl bg-[#f7f8f5] px-3 py-2 font-mono text-sm text-[#8a948a]">
+                  None
+                </p>
+              ) : (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {details.adapterCallbackKeys.map(
+                    (key) => (
+                      <span
+                        key={key}
+                        className="rounded-lg bg-[#f7f8f5] px-2.5 py-1.5 font-mono text-xs text-[#162018]"
+                      >
+                        {key}
+                      </span>
+                    ),
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-[#8a948a]">
+                Callback map size
+              </p>
+
+              <p className="mt-1 rounded-xl bg-[#f7f8f5] px-3 py-2 font-mono text-sm text-[#162018]">
+                {details.callbackMapSize === null
+                  ? 'Not a Map'
+                  : String(
+                      details.callbackMapSize,
+                    )}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-[#8a948a]">
+                Callback map keys
+              </p>
+
+              {details.callbackMapKeys.length === 0 ? (
+                <p className="mt-1 rounded-xl bg-[#f7f8f5] px-3 py-2 font-mono text-sm text-[#8a948a]">
+                  None
+                </p>
+              ) : (
+                <div className="mt-2 space-y-1.5">
+                  {details.callbackMapKeys.map(
+                    (key) => (
+                      <div
+                        key={key}
+                        className="rounded-xl bg-[#f7f8f5] px-3 py-2 font-mono text-xs text-[#162018]"
+                      >
+                        {key}
+                      </div>
+                    ),
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-3xl bg-white p-5 shadow-sm">
+          <h2 className="text-sm font-semibold text-[#162018]">
+            Callback handler
+          </h2>
+
+          <p className="mt-3 text-xs leading-5 text-[#8a948a]">
+            Read-only inspection of the callback
+            bridge. The function is not executed.
+          </p>
+
+          <pre className="mt-3 max-h-96 overflow-auto whitespace-pre-wrap break-words rounded-xl bg-[#f7f8f5] p-3 font-mono text-xs leading-5 text-[#162018]">
+            {details.handlerSource ||
+              'No callback handler source available.'}
+          </pre>
+        </div>
+
+        <div className="rounded-3xl bg-white p-5 shadow-sm">
+          <h2 className="text-sm font-semibold text-[#162018]">
+            Adapter request
+          </h2>
+
+          <p className="mt-3 text-xs leading-5 text-[#8a948a]">
+            Read-only inspection of the adapter
+            request function. The function is not
+            executed.
+          </p>
+
+          <pre className="mt-3 max-h-[32rem] overflow-auto whitespace-pre-wrap break-words rounded-xl bg-[#f7f8f5] p-3 font-mono text-xs leading-5 text-[#162018]">
+            {details.adapterRequestSource ||
+              'No adapter request function source available.'}
+          </pre>
+        </div>
+
+        <div className="rounded-3xl bg-white p-5 shadow-sm">
+          <h2 className="text-sm font-semibold text-[#162018]">
+            Adapter keys
+          </h2>
+
+          {details.adapterKeys.length === 0 ? (
+            <p className="mt-3 text-sm text-[#607060]">
+              No enumerable properties.
+            </p>
+          ) : (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {details.adapterKeys.map(
+                (key) => (
+                  <span
+                    key={key}
+                    className="rounded-lg bg-[#f7f8f5] px-2.5 py-1.5 font-mono text-xs text-[#162018]"
+                  >
+                    {key}
+                  </span>
+                ),
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-3xl bg-white p-5 shadow-sm">
+          <h2 className="text-sm font-semibold text-[#162018]">
+            Adapter prototype methods
+          </h2>
+
+          {details.adapterPrototypeKeys.length === 0 ? (
+            <p className="mt-3 text-sm text-[#607060]">
+              No adapter prototype methods found.
+            </p>
+          ) : (
+            <div className="mt-3 space-y-1.5">
+              {details.adapterPrototypeKeys.map(
+                (key) => (
+                  <div
+                    key={key}
+                    className="rounded-xl bg-[#f7f8f5] px-3 py-2 font-mono text-xs text-[#162018]"
+                  >
+                    {key}
+                  </div>
+                ),
+              )}
+            </div>
+          )}
+        </div>
+
+        {details.error && (
+          <div className="rounded-3xl bg-red-50 p-5">
+            <h2 className="text-sm font-semibold text-red-800">
+              Diagnostic error
+            </h2>
+
+            <pre className="mt-3 overflow-x-auto whitespace-pre-wrap break-words rounded-xl bg-white/70 p-3 font-mono text-xs leading-5 text-red-900">
+              {details.error}
+            </pre>
+          </div>
+        )}
+      </div>
+    )
+  }
+  */
+
+  /* ------------------------------------------------------------------------ */
+  /* Load User Circles                                                        */
+  /* ------------------------------------------------------------------------ */
+
   useEffect(() => {
     let cancelled = false
 
@@ -368,24 +903,15 @@ function ConnectedApp({
     }
   }, [address])
 
-  /*
-   * If NimCircle was opened from a shared Circle URL,
-   * fetch that Circle directly from the backend.
-   *
-   * This is important because the shared Circle
-   * will not necessarily belong to the connected
-   * wallet.
-   */
+  /* ------------------------------------------------------------------------ */
+  /* Load Shared Circle                                                       */
+  /* ------------------------------------------------------------------------ */
+
   useEffect(() => {
     if (!sharedCircleId) {
       return
     }
 
-    /*
-     * Store the ID in a local constant so TypeScript
-     * knows it cannot become null inside the async
-     * function below.
-     */
     const circleId =
       sharedCircleId
 
@@ -396,18 +922,6 @@ function ConnectedApp({
       setCircleError(null)
 
       try {
-        /*
-         * apiGetCircle() returns the complete Circle
-         * details response:
-         *
-         * {
-         *   circle,
-         *   stats,
-         *   contributions
-         * }
-         *
-         * We only need the Circle object here.
-         */
         const response =
           await apiGetCircle(
             circleId,
@@ -482,74 +996,111 @@ function ConnectedApp({
     }
   }, [sharedCircleId])
 
+  /* ------------------------------------------------------------------------ */
+  /* Create Circle                                                            */
+  /* ------------------------------------------------------------------------ */
+
   async function createCircle(data: {
     name: string
     description: string
     targetAmount: number
     deadline: string
+    goalOwnerWallet: string
+    goalOwnerUserId?: string | null
+    creatorCommitment: number
   }) {
     setCreatingCircle(true)
-    setCircleError(null)
 
     try {
+      const normalizedCreatorWallet =
+        normalizeWalletAddress(
+          address,
+        )
+
+      const normalizedGoalOwnerWallet =
+        normalizeWalletAddress(
+          data.goalOwnerWallet,
+        )
+
       /*
-       * The API helper converts the target amount
-       * from NIM to Luna before sending it to
-       * the backend.
+       * If the creator is also the goal owner,
+       * explicitly associate the Circle with the
+       * creator's existing NimCircle user record.
+       *
+       * For another person's wallet, we leave
+       * goalOwnerUserId null unless the caller
+       * explicitly supplied one.
        */
-      const circle =
+      const isPersonalGoal =
+        normalizedCreatorWallet.toLowerCase() ===
+        normalizedGoalOwnerWallet.toLowerCase()
+
+      const goalOwnerUserId =
+        isPersonalGoal
+          ? user.id
+          : data.goalOwnerUserId ?? null
+
+      const createdCircle =
         await apiCreateCircle({
-          name:
-            data.name.trim(),
-
+          name: data.name,
           description:
-            data.description.trim(),
-
+            data.description,
           targetAmount:
             data.targetAmount,
-
           deadline:
             data.deadline,
-
           creatorWallet:
-            address,
-
-          recipientWallet:
-            address,
-
+            normalizedCreatorWallet,
           creatorUserId:
             user.id,
+          goalOwnerWallet:
+            normalizedGoalOwnerWallet,
+          goalOwnerUserId,
+          creatorCommitment:
+            data.creatorCommitment,
         })
 
-      /*
-       * Add the backend-created Circle to
-       * the current UI state.
-       */
-      setCircles(
-        (current) => [
-          ...current,
-          circle,
-        ],
+      setCircles((current) => [
+        createdCircle,
+        ...current,
+      ])
+
+      setActiveCircleId(
+        createdCircle.id,
       )
 
-      /*
-       * Open the Circle using the ID generated
-       * by the backend.
-       */
-      openCircle(
-        circle.id,
-      )
-    } catch (requestError) {
-      const message =
-        requestError instanceof Error
-          ? requestError.message
-          : String(requestError)
+      setScreen('circle')
 
-      setCircleError(message)
+      /*
+       * Keep the browser URL synchronized
+       * with the newly created Circle.
+       */
+      const shareUrl =
+        `/circle/${encodeURIComponent(
+          createdCircle.id,
+        )}`
+
+      if (
+        window.location.pathname !==
+        shareUrl
+      ) {
+        window.history.pushState(
+          {
+            circleId:
+              createdCircle.id,
+          },
+          '',
+          shareUrl,
+        )
+      }
     } finally {
       setCreatingCircle(false)
     }
   }
+
+  /* ------------------------------------------------------------------------ */
+  /* Navigation                                                               */
+  /* ------------------------------------------------------------------------ */
 
   function openCircle(
     circleId: string,
@@ -563,10 +1114,6 @@ function ConnectedApp({
     /*
      * Keep the browser URL synchronized
      * with the Circle currently being viewed.
-     *
-     * This creates URLs such as:
-     *
-     * /circle/circle_123456
      */
     const shareUrl =
       `/circle/${encodeURIComponent(
@@ -629,6 +1176,10 @@ function ConnectedApp({
     }
   }
 
+  /* ------------------------------------------------------------------------ */
+  /* Active Circle                                                            */
+  /* ------------------------------------------------------------------------ */
+
   const activeCircle =
     circles.find(
       (circle) =>
@@ -639,7 +1190,19 @@ function ConnectedApp({
   const isCircleView =
     screen === 'circle'
 
+  /* ------------------------------------------------------------------------ */
+  /* Screen Rendering                                                         */
+  /* ------------------------------------------------------------------------ */
+
   function renderScreen() {
+    /*
+     * Diagnostics temporarily disabled.
+     *
+     * if (showDiagnostics) {
+     *   return renderDiagnosticScreen()
+     * }
+     */
+
     /*
      * A shared Circle is still being fetched.
      */
@@ -663,6 +1226,10 @@ function ConnectedApp({
       )
     }
 
+    /* ---------------------------------------------------------------------- */
+    /* Home                                                                   */
+    /* ---------------------------------------------------------------------- */
+
     if (screen === 'home') {
       return (
         <>
@@ -685,9 +1252,7 @@ function ConnectedApp({
                 circles
               }
               onCreateCircle={() =>
-                setScreen(
-                  'create',
-                )
+                setScreen('create')
               }
               onViewCircles={() =>
                 navigateTo(
@@ -703,9 +1268,16 @@ function ConnectedApp({
       )
     }
 
+    /* ---------------------------------------------------------------------- */
+    /* Create Circle                                                          */
+    /* ---------------------------------------------------------------------- */
+
     if (screen === 'create') {
       return (
         <CreateCircleView
+          creatorWallet={
+            address
+          }
           onBack={goHome}
           onCreate={
             createCircle
@@ -716,6 +1288,10 @@ function ConnectedApp({
         />
       )
     }
+
+    /* ---------------------------------------------------------------------- */
+    /* Circles                                                                */
+    /* ---------------------------------------------------------------------- */
 
     if (screen === 'circles') {
       return (
@@ -743,6 +1319,10 @@ function ConnectedApp({
       )
     }
 
+    /* ---------------------------------------------------------------------- */
+    /* Profile                                                                */
+    /* ---------------------------------------------------------------------- */
+
     if (screen === 'profile') {
       return (
         <ProfileView
@@ -750,6 +1330,10 @@ function ConnectedApp({
         />
       )
     }
+
+    /* ---------------------------------------------------------------------- */
+    /* Circle                                                                 */
+    /* ---------------------------------------------------------------------- */
 
     if (activeCircle) {
       return (
@@ -760,10 +1344,17 @@ function ConnectedApp({
           currentAddress={
             address
           }
+          currentUserId={
+            user.id
+          }
           onBack={goHome}
         />
       )
     }
+
+    /* ---------------------------------------------------------------------- */
+    /* Fallback Home                                                          */
+    /* ---------------------------------------------------------------------- */
 
     return (
       <HomeView
@@ -790,11 +1381,19 @@ function ConnectedApp({
     )
   }
 
+  /* ------------------------------------------------------------------------ */
+  /* Connected App Layout                                                     */
+  /* ------------------------------------------------------------------------ */
+
   return (
     <div className="min-h-screen bg-[#f7f8f5] text-[#162018]">
       <AppHeader
-        address={address}
-        onHome={goHome}
+        address={
+          address
+        }
+        onHome={
+          goHome
+        }
       />
 
       <main
@@ -809,7 +1408,9 @@ function ConnectedApp({
 
       {!isCircleView && (
         <BottomNavigation
-          activeTab={screen}
+          activeTab={
+            screen
+          }
           onNavigate={
             navigateTo
           }
@@ -867,7 +1468,9 @@ export default function App() {
           address={
             wallet.address!
           }
-          user={user}
+          user={
+            user
+          }
         />
       )}
     </ProfileGate>

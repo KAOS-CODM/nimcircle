@@ -9,18 +9,23 @@ async function createCircle({
   deadline,
   creatorWallet,
   creatorUserId,
-  recipientWallet,
+  goalOwnerWallet,
+  goalOwnerUserId,
+  creatorCommitment,
 }) {
   if (
     !name ||
-    !targetAmount ||
+    targetAmount === undefined ||
+    targetAmount === null ||
     !deadline ||
     !creatorWallet ||
     !creatorUserId ||
-    !recipientWallet
+    !goalOwnerWallet ||
+    creatorCommitment === undefined ||
+    creatorCommitment === null
   ) {
     const error = new Error(
-      'name, targetAmount, deadline, creatorWallet, creatorUserId and recipientWallet are required',
+      'name, targetAmount, deadline, creatorWallet, creatorUserId, goalOwnerWallet and creatorCommitment are required',
     )
 
     error.statusCode = 400
@@ -30,11 +35,13 @@ async function createCircle({
   const normalizedCreatorWallet =
     creatorWallet
       .trim()
+      .replace(/\s+/g, '')
       .toLowerCase()
 
-  const normalizedRecipientWallet =
-    recipientWallet
+  const normalizedGoalOwnerWallet =
+    goalOwnerWallet
       .trim()
+      .replace(/\s+/g, '')
       .toLowerCase()
 
   const creator =
@@ -63,6 +70,56 @@ async function createCircle({
     throw error
   }
 
+  /*
+   * The goal owner can be the creator,
+   * so goalOwnerUserId is optional.
+   *
+   * If a user ID is supplied, however,
+   * it must belong to the supplied wallet.
+   */
+  let goalOwnerUserIdValue = null
+
+  if (goalOwnerUserId) {
+    const goalOwner =
+      await User.findById(
+        goalOwnerUserId,
+      )
+
+    if (!goalOwner) {
+      const error = new Error(
+        'Goal owner user not found',
+      )
+
+      error.statusCode = 404
+      throw error
+    }
+
+    if (
+      goalOwner.walletAddress !==
+      normalizedGoalOwnerWallet
+    ) {
+      const error = new Error(
+        'Goal owner wallet does not match the user',
+      )
+
+      error.statusCode = 403
+      throw error
+    }
+
+    goalOwnerUserIdValue =
+      goalOwner._id
+  } else if (
+    normalizedGoalOwnerWallet ===
+    normalizedCreatorWallet
+  ) {
+    /*
+     * For a personal goal, the creator is
+     * also the goal owner.
+     */
+    goalOwnerUserIdValue =
+      creator._id
+  }
+
   const parsedTargetAmount =
     Number(targetAmount)
 
@@ -74,6 +131,39 @@ async function createCircle({
   ) {
     const error = new Error(
       'targetAmount must be a positive integer amount in Luna',
+    )
+
+    error.statusCode = 400
+    throw error
+  }
+
+  const parsedCreatorCommitment =
+    Number(creatorCommitment)
+
+  if (
+    !Number.isSafeInteger(
+      parsedCreatorCommitment,
+    ) ||
+    parsedCreatorCommitment < 0
+  ) {
+    const error = new Error(
+      'creatorCommitment must be a non-negative integer amount in Luna',
+    )
+
+    error.statusCode = 400
+    throw error
+  }
+
+  /*
+   * A creator cannot commit more than
+   * the Circle target.
+   */
+  if (
+    parsedCreatorCommitment >
+    parsedTargetAmount
+  ) {
+    const error = new Error(
+      'creatorCommitment cannot exceed the Circle target',
     )
 
     error.statusCode = 400
@@ -134,8 +224,14 @@ async function createCircle({
 
       creatorUserId,
 
-      recipientWallet:
-        normalizedRecipientWallet,
+      goalOwnerWallet:
+        normalizedGoalOwnerWallet,
+
+      goalOwnerUserId:
+        goalOwnerUserIdValue,
+
+      creatorCommitment:
+        parsedCreatorCommitment,
     })
   } catch (error) {
     if (error.code === 11000) {
@@ -232,6 +328,14 @@ async function getCircleById(
     await Circle.findOne({
       circleId,
     })
+      .populate(
+        'creatorUserId',
+        'username displayName avatar walletAddress',
+      )
+      .populate(
+        'goalOwnerUserId',
+        'username displayName avatar walletAddress',
+      )
 
   if (!circle) {
     const error = new Error(
@@ -305,15 +409,46 @@ async function getCircleById(
       : 0
 
   return {
-    circle: circle.toObject(),
+    circle:
+      circle.toObject(),
+
+    /*stats: {
+      raisedAmount,
+
+      targetAmount,
+
+      remainingAmount,
+
+      progressPercentage,
+
+      contributorCount:
+        contributorWallets.size,
+
+      creatorCommitment:
+        circle.creatorCommitment,
+
+      communityRaised:
+        Math.max(
+          raisedAmount -
+            circle.creatorCommitment,
+          0,
+        ),
+    },*/
 
     stats: {
       raisedAmount,
+    
       targetAmount,
+    
       remainingAmount,
+    
       progressPercentage,
+    
       contributorCount:
         contributorWallets.size,
+    
+      creatorCommitment:
+        circle.creatorCommitment,
     },
 
     contributions,
@@ -381,7 +516,10 @@ async function updateCircleStatus(
     throw error
   }
 
-  if (status !== 'cancelled') {
+  if (
+    status !==
+    'cancelled'
+  ) {
     const error = new Error(
       'The only manual status change allowed is cancellation',
     )

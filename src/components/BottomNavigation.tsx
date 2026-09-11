@@ -42,7 +42,7 @@ export default function BottomNavigation({
 }: BottomNavigationProps) {
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-[9999] border-t border-black/5 bg-white px-3 pt-3 shadow-[0_-8px_30px_rgba(22,32,24,0.08)]"
+      className="fixed inset-x-0 bottom-0 z-9999 border-t border-black/5 bg-white px-3 pt-3 shadow-[0_-8px_30px_rgba(22,32,24,0.08)]"
       style={{
         paddingBottom:
           'max(12px, env(safe-area-inset-bottom))',

@@ -62,7 +62,7 @@ export default function ConnectWalletView({
                 Wallet connection failed
               </p>
 
-              <p className="mt-2 break-words text-xs leading-5 text-red-700">
+              <p className="mt-2 wrap-break-word text-xs leading-5 text-red-700">
                 {error}
               </p>
             </div>

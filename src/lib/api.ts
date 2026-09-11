@@ -3,9 +3,22 @@ import type { User } from '../types/user'
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ||
-  `${window.location.protocol}//${window.location.hostname}:3000/api`
+  `${window.location.protocol}//${window.location.hostname}:9000/api`
 
 const LUNA_PER_NIM = 100_000
+
+/* -------------------------------------------------------------------------- */
+/* Wallet normalization                                                       */
+/* -------------------------------------------------------------------------- */
+
+function normalizeWalletAddress(
+  walletAddress: string,
+): string {
+  return walletAddress
+    .trim()
+    .replace(/\s+/g, '')
+    .toLowerCase()
+}
 
 /* -------------------------------------------------------------------------- */
 /* Backend response types                                                     */
@@ -42,16 +55,24 @@ interface ApiCircle {
   description: string
   targetAmount: number
   deadline: string
+
   creatorWallet: string
   creatorUserId: string
-  recipientWallet: string
+
+  goalOwnerWallet: string
+  goalOwnerUserId: string | null
+
+  creatorCommitment: number
+
   status:
     | 'active'
     | 'completed'
     | 'expired'
     | 'cancelled'
+
   completedAt: string | null
   cancelledAt: string | null
+
   createdAt: string
   updatedAt: string
 }
@@ -70,20 +91,31 @@ interface ApiCircleStats {
   remainingAmount: number
   progressPercentage: number
   contributorCount: number
+  creatorCommitment: number
 }
 
 interface ApiContribution {
   _id: string
   circleId: string
+
   contributorWallet: string
   contributorUserId: string
+
+  recipientWallet: string
+
   amount: number
+
   transactionHash: string
+
+  memo: string
+
   status:
     | 'pending'
     | 'confirmed'
     | 'failed'
+
   confirmedAt: string | null
+
   createdAt: string
   updatedAt: string
 }
@@ -113,7 +145,10 @@ interface ApiErrorResponse {
 export function nimToLuna(
   nim: number,
 ): number {
-  if (!Number.isFinite(nim) || nim <= 0) {
+  if (
+    !Number.isFinite(nim) ||
+    nim <= 0
+  ) {
     throw new Error(
       'NIM amount must be greater than zero.',
     )
@@ -152,11 +187,16 @@ function mapApiUser(
 ): User {
   return {
     id: user._id,
+
     displayName:
       user.displayName ||
       user.username,
+
     walletAddress:
-      user.walletAddress,
+      normalizeWalletAddress(
+        user.walletAddress,
+      ),
+
     createdAt:
       user.createdAt,
   }
@@ -167,18 +207,35 @@ function mapApiCircle(
 ): Circle {
   return {
     id: circle.circleId,
+
     name: circle.name,
-    description: circle.description,
+
+    description:
+      circle.description,
+
     targetAmount:
       lunaToNim(
         circle.targetAmount,
       ),
+
     deadline:
       circle.deadline,
+
     recipient:
-      circle.recipientWallet,
+      normalizeWalletAddress(
+        circle.goalOwnerWallet,
+      ),
+
     creator:
-      circle.creatorWallet,
+      normalizeWalletAddress(
+        circle.creatorWallet,
+      ),
+
+    creatorCommitment:
+      lunaToNim(
+        circle.creatorCommitment,
+      ),
+
     createdAt:
       circle.createdAt,
   }
@@ -208,14 +265,16 @@ async function request<T>(
         url,
         {
           ...options,
+
           headers: {
             'Content-Type':
               'application/json',
+
             ...(options.headers || {}),
           },
         },
       )
-    } catch (error) {
+  } catch (error) {
     const message =
       error instanceof Error
         ? error.message
@@ -298,8 +357,16 @@ export async function apiCreateUser(
       '/users',
       {
         method: 'POST',
+
         body:
-          JSON.stringify(data),
+          JSON.stringify({
+            ...data,
+
+            walletAddress:
+              normalizeWalletAddress(
+                data.walletAddress,
+              ),
+          }),
       },
     )
 
@@ -314,7 +381,9 @@ export async function apiGetUser(
   const response =
     await request<ApiUserResponse>(
       `/users/${encodeURIComponent(
-        walletAddress,
+        normalizeWalletAddress(
+          walletAddress,
+        ),
       )}`,
     )
 
@@ -333,7 +402,9 @@ export async function apiGetUserStats(
   const response =
     await request<ApiUserStatsResponse>(
       `/users/${encodeURIComponent(
-        walletAddress,
+        normalizeWalletAddress(
+          walletAddress,
+        ),
       )}/stats`,
     )
 
@@ -366,10 +437,13 @@ export async function apiUpdateUser(
   const response =
     await request<ApiUserResponse>(
       `/users/${encodeURIComponent(
-        walletAddress,
+        normalizeWalletAddress(
+          walletAddress,
+        ),
       )}`,
       {
         method: 'PATCH',
+
         body:
           JSON.stringify(updates),
       },
@@ -391,8 +465,10 @@ export async function apiCreateCircle(
     targetAmount: number
     deadline: string
     creatorWallet: string
-    recipientWallet: string
     creatorUserId: string
+    goalOwnerWallet: string
+    goalOwnerUserId?: string | null
+    creatorCommitment: number
   },
 ): Promise<Circle> {
   const response =
@@ -400,14 +476,44 @@ export async function apiCreateCircle(
       '/circles',
       {
         method: 'POST',
-        body: JSON.stringify({
-          ...data,
 
-          targetAmount:
-            nimToLuna(
-              data.targetAmount,
-            ),
-        }),
+        body:
+          JSON.stringify({
+            name:
+              data.name,
+
+            description:
+              data.description,
+
+            targetAmount:
+              nimToLuna(
+                data.targetAmount,
+              ),
+
+            deadline:
+              data.deadline,
+
+            creatorWallet:
+              normalizeWalletAddress(
+                data.creatorWallet,
+              ),
+
+            creatorUserId:
+              data.creatorUserId,
+
+            goalOwnerWallet:
+              normalizeWalletAddress(
+                data.goalOwnerWallet,
+              ),
+
+            goalOwnerUserId:
+              data.goalOwnerUserId ?? null,
+
+            creatorCommitment:
+              nimToLuna(
+                data.creatorCommitment,
+              ),
+          }),
       },
     )
 
@@ -420,13 +526,16 @@ export async function apiGetCircle(
   circleId: string,
 ): Promise<{
   circle: Circle
+
   stats: {
     raisedAmount: number
     targetAmount: number
     remainingAmount: number
     progressPercentage: number
     contributorCount: number
+    creatorCommitment: number
   }
+
   contributions: ApiContribution[]
 }> {
   const response =
@@ -468,6 +577,12 @@ export async function apiGetCircle(
       contributorCount:
         response.stats
           .contributorCount,
+
+      creatorCommitment:
+        lunaToNim(
+          response.stats
+            .creatorCommitment,
+        ),
     },
 
     contributions:
@@ -481,7 +596,9 @@ export async function apiGetCreatedCircles(
   const response =
     await request<ApiCirclesResponse>(
       `/circles/creator/${encodeURIComponent(
-        walletAddress,
+        normalizeWalletAddress(
+          walletAddress,
+        ),
       )}`,
     )
 
@@ -496,7 +613,9 @@ export async function apiGetJoinedCircles(
   const response =
     await request<ApiCirclesResponse>(
       `/circles/joined/${encodeURIComponent(
-        walletAddress,
+        normalizeWalletAddress(
+          walletAddress,
+        ),
       )}`,
     )
 
@@ -516,11 +635,17 @@ export async function apiCancelCircle(
       )}/status`,
       {
         method: 'PATCH',
-        body: JSON.stringify({
-          status: 'cancelled',
-          walletAddress:
-            creatorWallet,
-        }),
+
+        body:
+          JSON.stringify({
+            status:
+              'cancelled',
+
+            walletAddress:
+              normalizeWalletAddress(
+                creatorWallet,
+              ),
+          }),
       },
     )
 
@@ -533,27 +658,51 @@ export async function apiCancelCircle(
 /* Contributions                                                              */
 /* -------------------------------------------------------------------------- */
 
-export async function apiCreateContribution(data: {
-  circleId: string
-  contributorWallet: string
-  contributorUserId: string
-  amount: number
-  transactionHash: string
-}) {
+export async function apiCreateContribution(
+  data: {
+    circleId: string
+    contributorWallet: string
+    contributorUserId: string
+    recipientWallet: string
+    amount: number
+    transactionHash: string
+    memo: string
+  },
+) {
   return request<ApiContributionResponse>(
     '/contributions',
     {
       method: 'POST',
-      body: JSON.stringify({
-        circleId: data.circleId,
-        contributorWallet:
-          data.contributorWallet,
-        contributorUserId:
-          data.contributorUserId,
-        amount: nimToLuna(data.amount),
-        transactionHash:
-          data.transactionHash,
-      }),
+
+      body:
+        JSON.stringify({
+          circleId:
+            data.circleId,
+
+          contributorWallet:
+            normalizeWalletAddress(
+              data.contributorWallet,
+            ),
+
+          contributorUserId:
+            data.contributorUserId,
+
+          recipientWallet:
+            normalizeWalletAddress(
+              data.recipientWallet,
+            ),
+
+          amount:
+            nimToLuna(
+              data.amount,
+            ),
+
+          transactionHash:
+            data.transactionHash,
+
+          memo:
+            data.memo,
+        }),
     },
   )
 }
@@ -564,7 +713,9 @@ export async function apiGetUserContributions(
   const response =
     await request<ApiContributionsResponse>(
       `/contributions/user/${encodeURIComponent(
-        walletAddress,
+        normalizeWalletAddress(
+          walletAddress,
+        ),
       )}`,
     )
 
@@ -582,4 +733,17 @@ export async function apiGetCircleContributions(
     )
 
   return response.contributions
+}
+
+export async function apiConfirmContribution(
+  transactionHash: string,
+) {
+  return request<ApiContributionResponse>(
+    `/contributions/${encodeURIComponent(
+      transactionHash,
+    )}/confirm`,
+    {
+      method: 'PATCH',
+    },
+  )
 }
