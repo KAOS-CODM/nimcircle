@@ -6,6 +6,7 @@ const {
   getCreatedCircles,
   getJoinedCircles,
   updateCircleStatus,
+  extendCircleDeadline,
 } = require('../services/circleService')
 
 const router = express.Router()
@@ -150,6 +151,42 @@ router.patch(
         error:
           error.message ||
           'Failed to update Circle status',
+      })
+    }
+  },
+)
+
+router.patch(
+  '/:circleId/deadline',
+  async (req, res) => {
+    try {
+      const {
+        deadline,
+        walletAddress,
+      } = req.body
+
+      const circle =
+        await extendCircleDeadline(
+          req.params.circleId,
+          deadline,
+          walletAddress,
+        )
+
+      return res.json({
+        circle,
+      })
+    } catch (error) {
+      console.error(
+        'PATCH /circles/:circleId/deadline failed:',
+        error,
+      )
+
+      return res.status(
+        error.statusCode || 500,
+      ).json({
+        error:
+          error.message ||
+          'Failed to extend Circle deadline',
       })
     }
   },

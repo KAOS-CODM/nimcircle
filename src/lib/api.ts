@@ -739,6 +739,36 @@ export async function apiCancelCircle(
   )
 }
 
+export async function apiExtendCircleDeadline(
+  circleId: string,
+  deadline: string,
+  creatorWallet: string,
+): Promise<Circle> {
+  const response =
+    await request<ApiCircleResponse>(
+      `/circles/${encodeURIComponent(
+        circleId,
+      )}/deadline`,
+      {
+        method: 'PATCH',
+
+        body:
+          JSON.stringify({
+            deadline,
+
+            walletAddress:
+              normalizeWalletAddress(
+                creatorWallet,
+              ),
+          }),
+      },
+    )
+
+  return mapApiCircle(
+    response.circle,
+  )
+}
+
 /* -------------------------------------------------------------------------- */
 /* Contributions                                                              */
 /* -------------------------------------------------------------------------- */

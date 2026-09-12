@@ -584,6 +584,125 @@ async function updateCircleStatus(
   return circle
 }
 
+async function extendCircleDeadline(
+  circleId,
+  deadline,
+  walletAddress,
+) {
+  if (!walletAddress) {
+    const error = new Error(
+      'walletAddress is required',
+    )
+
+    error.statusCode = 400
+    throw error
+  }
+
+  if (!deadline) {
+    const error = new Error(
+      'deadline is required',
+    )
+
+    error.statusCode = 400
+    throw error
+  }
+
+  const circle =
+    await Circle.findOne({
+      circleId,
+    })
+
+  if (!circle) {
+    const error = new Error(
+      'Circle not found',
+    )
+
+    error.statusCode = 404
+    throw error
+  }
+
+  const normalizedWallet =
+    walletAddress
+      .trim()
+      .replace(/\s+/g, '')
+      .toLowerCase()
+
+  if (
+    circle.creatorWallet !==
+    normalizedWallet
+  ) {
+    const error = new Error(
+      'Only the Circle creator can extend the deadline',
+    )
+
+    error.statusCode = 403
+    throw error
+  }
+
+  if (
+    circle.status ===
+      'completed' ||
+    circle.status ===
+      'cancelled' ||
+    circle.status ===
+      'expired'
+  ) {
+    const error = new Error(
+      'This Circle can no longer extend its deadline',
+    )
+
+    error.statusCode = 400
+    throw error
+  }
+
+  const parsedDeadline =
+    new Date(deadline)
+
+  if (
+    Number.isNaN(
+      parsedDeadline.getTime(),
+    )
+  ) {
+    const error = new Error(
+      'Invalid deadline',
+    )
+
+    error.statusCode = 400
+    throw error
+  }
+
+  if (
+    parsedDeadline.getTime() <=
+    Date.now()
+  ) {
+    const error = new Error(
+      'Deadline must be in the future',
+    )
+
+    error.statusCode = 400
+    throw error
+  }
+
+  if (
+    parsedDeadline.getTime() <=
+    circle.deadline.getTime()
+  ) {
+    const error = new Error(
+      'New deadline must be later than the current deadline',
+    )
+
+    error.statusCode = 400
+    throw error
+  }
+
+  circle.deadline =
+    parsedDeadline
+
+  await circle.save()
+
+  return circle
+}
+
 module.exports = {
   createCircle,
   syncCircleStatus,
@@ -591,4 +710,5 @@ module.exports = {
   getCreatedCircles,
   getJoinedCircles,
   updateCircleStatus,
+  extendCircleDeadline,
 }

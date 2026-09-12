@@ -217,7 +217,7 @@ function CircleCard({
       <div className="mt-5">
         <div className="flex items-end justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[#607060]">
+            <p className="text-xs font-semibold uppercase tracking-widest text-[#607060]">
               Raised
             </p>
 
@@ -227,7 +227,7 @@ function CircleCard({
           </div>
 
           <div className="text-right">
-            <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[#607060]">
+            <p className="text-xs font-semibold uppercase tracking-widest text-[#607060]">
               Target
             </p>
 

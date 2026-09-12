@@ -448,7 +448,7 @@ export default function ProfileView({
 
       {/* Member since */}
       <div className="mt-5 rounded-3xl border border-black/5 bg-white p-5">
-        <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[#607060]">
+        <p className="text-xs font-semibold uppercase tracking-widest text-[#607060]">
           Member since
         </p>
 

@@ -9,6 +9,8 @@ import type { Circle } from '../../types/circle'
 import ContributeModal from '../../components/ContributeModal'
 
 import {
+  apiCancelCircle,
+  apiExtendCircleDeadline,
   apiGetCircle,
 } from '../../lib/api'
 
@@ -125,6 +127,41 @@ export default function CircleView({
   const [
     circleError,
     setCircleError,
+  ] = useState<string | null>(null)
+
+  const [
+    showDeadlineModal,
+    setShowDeadlineModal,
+  ] = useState(false)
+
+  const [
+    newDeadline,
+    setNewDeadline,
+  ] = useState('')
+
+  const [
+    extendingDeadline,
+    setExtendingDeadline,
+  ] = useState(false)
+
+  const [
+    deadlineError,
+    setDeadlineError,
+  ] = useState<string | null>(null)
+
+  const [
+    showCancelConfirm,
+    setShowCancelConfirm,
+  ] = useState(false)
+
+  const [
+    cancellingCircle,
+    setCancellingCircle,
+  ] = useState(false)
+
+  const [
+    cancelError,
+    setCancelError,
   ] = useState<string | null>(null)
 
   const loadCircle = useCallback(
@@ -339,6 +376,9 @@ export default function CircleView({
     raisedAmount >=
     targetAmount
 
+  const isCancelled =
+    circle.status === 'cancelled'
+
   const isExpired =
     hasValidDeadline &&
     deadlineTimestamp < now &&
@@ -366,41 +406,41 @@ export default function CircleView({
   async function handleShare() {
     const miniAppUrl =
       import.meta.env.VITE_NIMCIRCLE_URL
-  
+
     const shareUrl =
       `https://nimpay.app/miniapps/open/${miniAppUrl}/circle/${encodeURIComponent(circleId)}`
-  
+
     try {
       const textArea =
         document.createElement('textarea')
-  
+
       textArea.value = shareUrl
       textArea.style.position = 'fixed'
       textArea.style.left = '-9999px'
       textArea.style.top = '0'
-  
+
       document.body.appendChild(
         textArea,
       )
-  
+
       textArea.focus()
       textArea.select()
-  
+
       const copied =
         document.execCommand('copy')
-  
+
       document.body.removeChild(
         textArea,
       )
-  
+
       if (!copied) {
         throw new Error(
           'Copy command failed',
         )
       }
-  
+
       setLinkCopied(true)
-  
+
       window.setTimeout(() => {
         setLinkCopied(false)
       }, 2000)
@@ -409,7 +449,7 @@ export default function CircleView({
         'Failed to copy Circle link:',
         error,
       )
-  
+
       window.alert(
         'Unable to copy Circle link.',
       )
@@ -420,6 +460,121 @@ export default function CircleView({
     //setShowContributeModal(false)
 
     await loadCircle()
+  }
+
+  async function handleExtendDeadline() {
+    if (!circle) {
+      return
+    }
+
+    if (!newDeadline) {
+      setDeadlineError(
+        'Please choose a new deadline.',
+      )
+
+      return
+    }
+
+    const parsedDeadline =
+      new Date(newDeadline)
+
+    if (
+      Number.isNaN(
+        parsedDeadline.getTime(),
+      )
+    ) {
+      setDeadlineError(
+        'Please choose a valid deadline.',
+      )
+
+      return
+    }
+
+    const currentDeadline =
+      new Date(circle.deadline)
+
+    if (
+      Number.isNaN(
+        currentDeadline.getTime(),
+      )
+    ) {
+      setDeadlineError(
+        'The current Circle deadline is invalid.',
+      )
+
+      return
+    }
+
+    if (
+      parsedDeadline.getTime() <=
+      currentDeadline.getTime()
+    ) {
+      setDeadlineError(
+        'The new deadline must be later than the current deadline.',
+      )
+
+      return
+    }
+
+    setExtendingDeadline(true)
+    setDeadlineError(null)
+
+    try {
+      const updatedCircle =
+        await apiExtendCircleDeadline(
+          circle.id,
+          parsedDeadline.toISOString(),
+          normalizedCurrentAddress,
+        )
+
+      setCircle(updatedCircle)
+
+      setShowDeadlineModal(false)
+      setNewDeadline('')
+
+      await loadCircle()
+    } catch (requestError) {
+      const message =
+        requestError instanceof Error
+          ? requestError.message
+          : String(requestError)
+
+      setDeadlineError(message)
+    } finally {
+      setExtendingDeadline(false)
+    }
+  }
+
+  async function handleCancelCircle() {
+    if (!circle) {
+      return
+    }
+
+    setCancellingCircle(true)
+    setCancelError(null)
+
+    try {
+      const updatedCircle =
+        await apiCancelCircle(
+          circle.id,
+          normalizedCurrentAddress,
+        )
+
+      setCircle(updatedCircle)
+
+      setShowCancelConfirm(false)
+
+      await loadCircle()
+    } catch (requestError) {
+      const message =
+        requestError instanceof Error
+          ? requestError.message
+          : String(requestError)
+
+      setCancelError(message)
+    } finally {
+      setCancellingCircle(false)
+    }
   }
 
   return (
@@ -464,14 +619,11 @@ export default function CircleView({
         raisedAmount={raisedAmount}
         targetAmount={targetAmount}
         progress={progress}
-        remainingAmount={
-          remainingAmount
-        }
-        deadlineStatus={
-          deadlineStatus
-        }
+        remainingAmount={remainingAmount}
+        deadlineStatus={deadlineStatus}
         isCompleted={isCompleted}
         isExpired={isExpired}
+        isCancelled={isCancelled}
       />
 
       <div className="mt-4 grid grid-cols-2 gap-3">
@@ -523,7 +675,7 @@ export default function CircleView({
             value={`@${circle.creatorUsername}`}
             secondaryValue={circle.creator}
           />
-          
+
           <InfoRow
             label="Goal owner"
             value={`@${circle.recipientUsername}`}
@@ -605,7 +757,9 @@ export default function CircleView({
       </div>
 
       {isCreator &&
-        !isCompleted && (
+        !isCompleted &&
+        !isExpired &&
+        !isCancelled &&  (
           <div className="mt-4 rounded-3xl border border-black/5 bg-white p-5 shadow-sm">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#607060]">
@@ -628,23 +782,187 @@ export default function CircleView({
 
             <button
               type="button"
-              disabled
-              className="mt-5 min-h-11 w-full rounded-2xl border border-black/10 bg-[#f7f8f5] px-5 text-sm font-bold text-[#162018] opacity-60"
+              onClick={() => {
+                setCancelError(null)
+                setShowCancelConfirm(false)
+                setDeadlineError(null)
+                setNewDeadline('')
+                setShowDeadlineModal(true)
+              }}
+              className="mt-5 min-h-11 w-full rounded-2xl border border-black/10 bg-[#f7f8f5] px-5 text-sm font-bold text-[#162018] transition-transform active:scale-[0.98]"
             >
               Extend deadline
             </button>
 
             <p className="mt-2 text-center text-xs text-[#607060]">
-              Deadline management will be available in the next stage.
+              Give contributors more time to reach the goal.
             </p>
+
+            <div className="mt-5 border-t border-black/5 pt-5">
+              <button
+                type="button"
+                onClick={() => {
+                  setDeadlineError(null)
+                  setCancelError(null)
+                  setShowDeadlineModal(false)
+                  setShowCancelConfirm(true)
+                }}
+                disabled={cancellingCircle}
+                className="min-h-11 w-full rounded-2xl border border-red-200 bg-red-50 px-5 text-sm font-bold text-red-700 transition-transform active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Cancel Circle
+              </button>
+
+              <p className="mt-2 text-center text-xs text-[#607060]">
+                Stop this Circle if the goal is no longer needed.
+              </p>
+            </div>
           </div>
         )}
+
+      {showCancelConfirm && (
+        <div className="mt-4 rounded-3xl border border-red-200 bg-red-50 p-5">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-red-600">
+            Cancel Circle
+          </p>
+
+          <h2 className="mt-2 text-lg font-bold text-[#162018]">
+            Are you sure?
+          </h2>
+
+          <p className="mt-2 text-sm leading-6 text-[#607060]">
+            Cancelling this Circle will stop the goal and prevent further
+            contributions. This action cannot be undone.
+          </p>
+
+          {cancelError && (
+            <div className="mt-4 rounded-2xl border border-red-200 bg-white p-4">
+              <p className="text-xs leading-5 text-red-600">
+                {cancelError}
+              </p>
+            </div>
+          )}
+
+          <div className="mt-5 grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setShowCancelConfirm(false)
+                setCancelError(null)
+              }}
+              disabled={cancellingCircle}
+              className="min-h-11 rounded-2xl border border-black/10 bg-white px-4 text-sm font-bold text-[#162018] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Keep Circle
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                void handleCancelCircle()
+              }
+              disabled={cancellingCircle}
+              className="min-h-11 rounded-2xl bg-red-600 px-4 text-sm font-bold text-white transition-transform active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {cancellingCircle
+                ? 'Cancelling...'
+                : 'Cancel Circle'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showDeadlineModal && (
+        <div className="mt-4 rounded-3xl border border-black/5 bg-white p-5 shadow-sm">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#607060]">
+                Extend deadline
+              </p>
+
+              <h2 className="mt-2 text-lg font-bold">
+                Give your Circle more time
+              </h2>
+
+              <p className="mt-2 text-sm leading-6 text-[#607060]">
+                Choose a new deadline later than the current one.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setShowDeadlineModal(false)
+                setDeadlineError(null)
+              }}
+              disabled={extendingDeadline}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#f7f8f5] text-sm font-bold text-[#607060]"
+              aria-label="Close deadline editor"
+            >
+              ×
+            </button>
+          </div>
+
+          <div className="mt-5">
+            <label
+              htmlFor="circle-new-deadline"
+              className="text-xs font-semibold uppercase tracking-wide text-[#607060]"
+            >
+              New deadline
+            </label>
+
+            <input
+              id="circle-new-deadline"
+              type="datetime-local"
+              value={newDeadline}
+              onChange={(event) => {
+                setNewDeadline(
+                  event.target.value,
+                )
+
+                setDeadlineError(null)
+              }}
+              disabled={extendingDeadline}
+              min={toDateTimeLocalMin(
+                circle.deadline,
+              )}
+              className="mt-2 min-h-12 w-full rounded-2xl border border-black/10 bg-[#f7f8f5] px-4 text-sm font-medium text-[#162018] outline-none focus:border-[#162018]"
+            />
+          </div>
+
+          {deadlineError && (
+            <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4">
+              <p className="text-xs leading-5 text-red-600">
+                {deadlineError}
+              </p>
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() =>
+              void handleExtendDeadline()
+            }
+            disabled={
+              extendingDeadline ||
+              !newDeadline
+            }
+            className="mt-5 min-h-12 w-full rounded-2xl bg-[#c7f36b] px-5 py-3 text-sm font-bold text-[#162018] transition-transform active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {extendingDeadline
+              ? 'Updating deadline...'
+              : 'Update deadline'}
+          </button>
+        </div>
+      )}
 
       <div className="mt-6">
         {isCompleted ? (
           <CompletedState />
         ) : isExpired ? (
           <ExpiredState />
+        ) : isCancelled ? (
+          <CancelledState />
         ) : (
           <>
             <button
@@ -654,6 +972,7 @@ export default function CircleView({
               }
               disabled={
                 loadingCircle ||
+                isCancelled ||
                 remainingAmount <= 0 ||
                 (isCreator &&
                   !canCreatorContribute)
@@ -730,6 +1049,7 @@ function GoalHeader({
   deadlineStatus,
   isCompleted,
   isExpired,
+  isCancelled,
 }: {
   circle: Circle
   raisedAmount: number
@@ -739,13 +1059,16 @@ function GoalHeader({
   deadlineStatus: DeadlineStatus
   isCompleted: boolean
   isExpired: boolean
+  isCancelled: boolean
 }) {
   const status =
     isCompleted
       ? 'Completed'
-      : isExpired
-        ? 'Expired'
-        : 'Active'
+      : isCancelled
+        ? 'Cancelled'
+        : isExpired
+          ? 'Expired'
+          : 'Active'
 
   return (
     <div className="rounded-4xl bg-[#162018] p-6 text-white shadow-sm">
@@ -764,9 +1087,11 @@ function GoalHeader({
           className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold ${
             isCompleted
               ? 'bg-[#c7f36b] text-[#162018]'
-              : isExpired
-                ? 'bg-white/10 text-white/60'
-                : 'bg-white/10 text-white'
+              : isCancelled
+                ? 'bg-red-500/20 text-red-200'
+                : isExpired
+                  ? 'bg-white/10 text-white/60'
+                  : 'bg-white/10 text-white'
           }`}
         >
           {status}
@@ -972,7 +1297,7 @@ function ContributorList({
                   ? `@${contribution.contributorUsername}`
                   : contribution.contributorWallet}
               </p>
-              
+
               <p className="mt-1 truncate font-mono text-xs text-[#607060]">
                 {contribution.contributorWallet}
               </p>
@@ -1146,6 +1471,25 @@ function ExpiredState() {
   )
 }
 
+function CancelledState() {
+  return (
+    <div className="rounded-3xl border border-red-200 bg-red-50 p-5 text-center">
+      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-red-100 text-lg font-bold text-red-700">
+        ×
+      </div>
+
+      <h2 className="mt-4 text-base font-bold">
+        Circle cancelled
+      </h2>
+
+      <p className="mt-2 text-sm leading-5 text-[#607060]">
+        This Circle has been cancelled and can no longer receive
+        contributions.
+      </p>
+    </div>
+  )
+}
+
 /* -------------------------------------------------------------------------- */
 /* Deadline                                                                   */
 /* -------------------------------------------------------------------------- */
@@ -1221,6 +1565,34 @@ function getDeadlineStatus(
 /* -------------------------------------------------------------------------- */
 /* Formatting                                                                 */
 /* -------------------------------------------------------------------------- */
+
+function toDateTimeLocalMin(
+  value: string,
+) {
+  const date =
+    new Date(value)
+
+  if (
+    Number.isNaN(
+      date.getTime(),
+    )
+  ) {
+    return undefined
+  }
+
+  const offset =
+    date.getTimezoneOffset()
+
+  const localDate =
+    new Date(
+      date.getTime() -
+        offset * 60 * 1000,
+    )
+
+  return localDate
+    .toISOString()
+    .slice(0, 16)
+}
 
 function formatDate(
   value: string,
