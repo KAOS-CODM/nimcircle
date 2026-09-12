@@ -4,7 +4,11 @@ import {
   apiCreateContribution,
   nimToLuna,
 } from '../lib/api'
-import { sendCircleContribution } from '../lib/nimiqPayment'
+import {
+  PAYMENT_ERROR_CODES,
+  sendCircleContribution,
+} from '../lib/nimiqPayment'
+import { useLanguage } from '../i18n/useLanguage'
 
 interface ContributeModalProps {
   circleId: string
@@ -17,8 +21,25 @@ interface ContributeModalProps {
   onSuccess: () => void
 }
 
+interface ErrorTranslations {
+  transactionCancelled: string
+  serverUnavailable: string
+  processingError: string
+  transactionConfirmationFailed: string
+
+  paymentNoAccount: string
+  paymentInvalidRecipient: string
+  paymentInvalidRecipientFormat: string
+  paymentMissingCircleId: string
+  paymentConsensusNotEstablished: string
+  paymentAmountInvalid: string
+  paymentAmountTooLarge: string
+  paymentTransactionFailed: string
+}
+
 function getErrorMessage(
   error: unknown,
+  translations: ErrorTranslations,
 ): string {
   if (
     error &&
@@ -44,6 +65,42 @@ function getErrorMessage(
       errorObject.error?.message ??
       ''
 
+    const paymentErrorTranslations: Record<
+      string,
+      string
+    > = {
+      [PAYMENT_ERROR_CODES.NO_ACCOUNT]:
+        translations.paymentNoAccount,
+
+      [PAYMENT_ERROR_CODES.INVALID_RECIPIENT]:
+        translations.paymentInvalidRecipient,
+
+      [PAYMENT_ERROR_CODES.INVALID_RECIPIENT_FORMAT]:
+        translations.paymentInvalidRecipientFormat,
+
+      [PAYMENT_ERROR_CODES.MISSING_CIRCLE_ID]:
+        translations.paymentMissingCircleId,
+
+      [PAYMENT_ERROR_CODES.CONSENSUS_NOT_ESTABLISHED]:
+        translations.paymentConsensusNotEstablished,
+
+      [PAYMENT_ERROR_CODES.AMOUNT_INVALID]:
+        translations.paymentAmountInvalid,
+
+      [PAYMENT_ERROR_CODES.AMOUNT_TOO_LARGE]:
+        translations.paymentAmountTooLarge,
+
+      [PAYMENT_ERROR_CODES.TRANSACTION_FAILED]:
+        translations.paymentTransactionFailed,
+    }
+
+    if (
+      typeof code === 'string' &&
+      paymentErrorTranslations[code]
+    ) {
+      return paymentErrorTranslations[code]
+    }
+
     const normalizedMessage =
       message.toLowerCase()
 
@@ -51,7 +108,7 @@ function getErrorMessage(
       code === 4001 ||
       code === '4001'
     ) {
-      return 'You cancelled the transaction.'
+      return translations.transactionCancelled
     }
 
     if (
@@ -74,7 +131,7 @@ function getErrorMessage(
         'request denied',
       )
     ) {
-      return 'You cancelled the transaction.'
+      return translations.transactionCancelled
     }
 
     if (
@@ -103,7 +160,7 @@ function getErrorMessage(
         'enotfound',
       )
     ) {
-      return 'We could not reach the NimCircle server. Please check your connection and try again.'
+      return translations.serverUnavailable
     }
 
     if (message) {
@@ -119,14 +176,18 @@ function getErrorMessage(
     return error
   }
 
-  return 'Something went wrong while processing the contribution. Please try again.'
+  return translations.processingError
 }
 
 function isTransactionNotFoundError(
   error: unknown,
+  translations: ErrorTranslations,
 ): boolean {
   const message =
-    getErrorMessage(error).toLowerCase()
+    getErrorMessage(
+      error,
+      translations,
+    ).toLowerCase()
 
   return (
     message.includes(
@@ -149,6 +210,7 @@ function wait(
 
 async function confirmContributionWithRetry(
   transactionHash: string,
+  translations: ErrorTranslations,
 ): Promise<void> {
   const maxAttempts = 30
   const retryDelay = 2_000
@@ -168,6 +230,7 @@ async function confirmContributionWithRetry(
       const shouldRetry =
         isTransactionNotFoundError(
           confirmationError,
+          translations,
         )
 
       const hasAttemptsRemaining =
@@ -185,7 +248,7 @@ async function confirmContributionWithRetry(
   }
 
   throw new Error(
-    'The transaction could not be confirmed.',
+    translations.transactionConfirmationFailed,
   )
 }
 
@@ -199,6 +262,8 @@ export default function ContributeModal({
   onClose,
   onSuccess,
 }: ContributeModalProps) {
+  const { t } = useLanguage()
+
   const [amount, setAmount] =
     useState(
       fixedAmountNim !== undefined
@@ -221,8 +286,8 @@ export default function ContributeModal({
   const [transactionHash, setTransactionHash] =
     useState<string | null>(null)
 
-  const [paymentSent, setPaymentSent] =
-    useState(false)
+  /*const [paymentSent, setPaymentSent] =
+    useState(false)*/
 
   const parsedAmount = Number(amount)
 
@@ -231,16 +296,55 @@ export default function ContributeModal({
     parsedAmount > 0 &&
     parsedAmount <= remainingAmount
 
+  const errorTranslations = {
+    transactionCancelled:
+      t.contributeModal.transactionCancelled,
+
+    serverUnavailable:
+      t.contributeModal.serverUnavailable,
+
+    processingError:
+      t.contributeModal.processingError,
+
+    transactionConfirmationFailed:
+      t.contributeModal.transactionConfirmationFailed,
+
+    paymentNoAccount:
+      t.contributeModal.paymentNoAccount,
+
+    paymentInvalidRecipient:
+      t.contributeModal.paymentInvalidRecipient,
+
+    paymentInvalidRecipientFormat:
+      t.contributeModal.paymentInvalidRecipientFormat,
+
+    paymentMissingCircleId:
+      t.contributeModal.paymentMissingCircleId,
+
+    paymentConsensusNotEstablished:
+      t.contributeModal.paymentConsensusNotEstablished,
+
+    paymentAmountInvalid:
+      t.contributeModal.paymentAmountInvalid,
+
+    paymentAmountTooLarge:
+      t.contributeModal.paymentAmountTooLarge,
+
+    paymentTransactionFailed:
+      t.contributeModal.paymentTransactionFailed,
+  }
+
   async function handleContribute() {
     setError(null)
-    setPaymentSent(false)
+    //setPaymentSent(false)
+    setTransactionHash(null)
 
     if (
       !Number.isFinite(parsedAmount) ||
       parsedAmount <= 0
     ) {
       setError(
-        'Enter a valid NIM amount.',
+        t.contributeModal.validAmount,
       )
       return
     }
@@ -249,7 +353,10 @@ export default function ContributeModal({
       parsedAmount > remainingAmount
     ) {
       setError(
-        `You can contribute a maximum of ${remainingAmount.toLocaleString()} NIM.`,
+        t.contributeModal.maximumAmount.replace(
+          '{amount}',
+          remainingAmount.toLocaleString(),
+        ),
       )
       return
     }
@@ -263,6 +370,7 @@ export default function ContributeModal({
       setError(
         getErrorMessage(
           conversionError,
+          errorTranslations,
         ),
       )
       return
@@ -270,7 +378,7 @@ export default function ContributeModal({
 
     if (lunaAmount < 1) {
       setError(
-        'The minimum contribution is 0.00001 NIM.',
+        t.contributeModal.minimumAmount,
       )
       return
     }
@@ -280,7 +388,8 @@ export default function ContributeModal({
       parsedAmount !== fixedAmountNim
     ) {
       setError(
-        'Your creator commitment cannot be changed.',
+        t.contributeModal
+          .creatorCommitmentCannotChange,
       )
       return
     }
@@ -290,19 +399,26 @@ export default function ContributeModal({
 
     if (!normalizedRecipient) {
       setError(
-        'This Circle has an invalid recipient address.',
+        t.contributeModal.invalidRecipient,
       )
       return
     }
 
     setIsSubmitting(true)
 
+    /*
+     * Keep this local variable as the source
+     * of truth for the current payment attempt.
+     *
+     * React state updates such as setPaymentSent()
+     * are asynchronous, so the state value may still
+     * be false if an error occurs immediately after
+     * the transaction is sent.
+     */
+    let sentTransactionHash:
+      string | null = null
+
     try {
-      /*
-       * Step 1:
-       * Send the actual NIM payment through
-       * the shared Nimiq payment helper.
-       */
       console.log(
         '[NimCircle] Sending Circle contribution...',
       )
@@ -326,15 +442,16 @@ export default function ContributeModal({
       const hash =
         payment.transactionHash
 
-      setTransactionHash(hash)
-      setPaymentSent(true)
-
       /*
-       * Step 2:
-       * Store the transaction as pending.
-       *
-       * The backend does not trust the client here.
+       * The transaction hash is the reliable
+       * indicator that Nimiq Pay accepted and
+       * returned the transaction.
        */
+      sentTransactionHash = hash
+
+      setTransactionHash(hash)
+      //setPaymentSent(true)
+
       await apiCreateContribution({
         circleId,
         contributorWallet,
@@ -346,24 +463,15 @@ export default function ContributeModal({
         memo: payment.memo,
       })
 
-      /*
-       * Step 3:
-       * Ask the backend to verify the transaction
-       * against the Nimiq blockchain.
-       */
       console.log(
         '[NimCircle] Waiting for blockchain confirmation...',
       )
 
       await confirmContributionWithRetry(
         hash,
+        errorTranslations,
       )
 
-      /*
-       * Step 4:
-       * The backend has now verified the
-       * transaction. The contribution is confirmed.
-       */
       console.log(
         '[NimCircle] Contribution confirmed:',
         hash,
@@ -371,15 +479,7 @@ export default function ContributeModal({
 
       setSuccess(true)
 
-      /*
-       * Refresh Circle data in the parent,
-       * but do not close this modal.
-       *
-       * The success screen owns the final
-       * confirmation and the user closes it
-       * with the Done button.
-       */
-      onSuccess()
+      //onSuccess()
     } catch (requestError) {
       console.error(
         '[NimCircle] Contribution failed:',
@@ -389,11 +489,23 @@ export default function ContributeModal({
       const message =
         getErrorMessage(
           requestError,
+          errorTranslations,
         )
 
-      if (paymentSent) {
+      /*
+       * If we already received a transaction hash,
+       * the payment was sent even if the backend
+       * creation or confirmation failed afterward.
+       *
+       * Do not rely on paymentSent here because
+       * React state updates are asynchronous.
+       */
+      if (sentTransactionHash) {
         setError(
-          `Your transaction was sent, but NimCircle could not finish processing it. Your funds may already have been transferred. Transaction: ${transactionHash ?? 'unknown'}`,
+          `${t.contributeModal.transactionSentWarning} ${t.contributeModal.transactionLabel.replace(
+            '{hash}',
+            sentTransactionHash,
+          )}`,
         )
       } else {
         setError(message)
@@ -405,186 +517,325 @@ export default function ContributeModal({
 
   if (success) {
     return (
-      <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
-        <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#c7f36b] text-xl font-bold text-[#162018]">
-            ✓
+      <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/50 px-4 py-4 backdrop-blur-sm sm:items-center">
+        <div className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl">
+          <div className="bg-slate-950 px-6 pb-7 pt-8 text-white">
+            <div className="flex flex-col items-center text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-lime-300 text-2xl font-black text-slate-950">
+                ✓
+              </div>
+
+              <p className="mt-5 text-[10px] font-black uppercase tracking-[0.2em] text-lime-300">
+                {t.contributeModal.transaction}
+              </p>
+
+              <h2 className="mt-2 text-2xl font-black tracking-tight">
+                {t.contributeModal.contributionConfirmed}
+              </h2>
+            </div>
           </div>
 
-          <h2 className="mt-5 text-center text-xl font-bold">
-            Contribution confirmed
-          </h2>
+          <div className="px-6 pb-6 pt-6">
+            <p className="text-center text-sm leading-6 text-slate-500">
+              {t.contributeModal
+                .contributionConfirmedDescription.replace(
+                  '{amount}',
+                  parsedAmount.toLocaleString(),
+                )}
+            </p>
 
-          <p className="mt-2 text-center text-sm leading-6 text-[#607060]">
-            Your{' '}
-            {parsedAmount.toLocaleString()} NIM
-            contribution has been confirmed on the
-            Nimiq blockchain.
-          </p>
+            {transactionHash && (
+              <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
+                  {t.contributeModal.transaction}
+                </p>
 
-          {transactionHash && (
-            <div className="mt-5 rounded-2xl bg-[#f7f8f5] p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-[#607060]">
-                Transaction
-              </p>
+                <p className="mt-2 break-all font-mono text-xs leading-5 text-slate-600">
+                  {transactionHash}
+                </p>
+              </div>
+            )}
 
-              <p className="mt-2 break-all font-mono text-xs text-[#162018]/70">
-                {transactionHash}
-              </p>
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="mt-5 min-h-12 w-full rounded-2xl bg-[#162018] px-5 py-3 text-sm font-bold text-white transition-transform active:scale-[0.98]"
-          >
-            Done
-          </button>
+            <button
+              type="button"
+              onClick={async () => {
+                await onSuccess()
+                onClose()
+              }}
+              className="mt-5 flex min-h-12 w-full items-center justify-center rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white transition hover:bg-slate-800 active:scale-[0.98]"
+            >
+              {t.contributeModal.done}
+            </button>
+          </div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
-      <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#607060]">
-              Shared goal
-            </p>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/50 px-4 py-4 backdrop-blur-sm sm:items-center">
+      <div className="max-h-[calc(100vh-2rem)] w-full max-w-md overflow-y-auto rounded-3xl bg-white shadow-2xl">
+        {/* Header */}
+        <div className="bg-slate-950 px-6 pb-6 pt-6 text-white">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-lime-300">
+                {t.contributeModal.sharedGoal}
+              </p>
 
-            <h2 className="mt-2 text-xl font-bold">
-              {isFixedAmount
-                ? 'Confirm creator commitment'
-                : 'Contribute NIM'}
-            </h2>
-          </div>
+              <h2 className="mt-2 text-2xl font-black tracking-tight">
+                {isFixedAmount
+                  ? t.contributeModal
+                      .confirmCreatorCommitment
+                  : t.contributeModal
+                      .contributeNim}
+              </h2>
+            </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isSubmitting}
-            aria-label="Close"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#f7f8f5] text-lg text-[#607060] disabled:opacity-50"
-          >
-            ×
-          </button>
-        </div>
-
-        <div className="mt-6">
-          <label
-            htmlFor="contribution-amount"
-            className="text-sm font-semibold text-[#162018]"
-          >
-            {isFixedAmount
-              ? 'Creator commitment'
-              : 'Amount'}
-          </label>
-
-          <div className="relative mt-2">
-            <input
-              id="contribution-amount"
-              type="number"
-              inputMode="decimal"
-              min="0.00001"
-              max={remainingAmount}
-              step="0.00001"
-              value={amount}
-              onChange={(event) => {
-                if (isFixedAmount) {
-                  return
-                }
-
-                setAmount(
-                  event.target.value,
-                )
-
-                setError(null)
-              }}
-              readOnly={isFixedAmount}
+            <button
+              type="button"
+              onClick={onClose}
               disabled={isSubmitting}
-              placeholder="0"
-              className={`min-h-14 w-full rounded-2xl border border-black/10 bg-[#f7f8f5] px-4 pr-16 text-xl font-bold text-[#162018] outline-none focus:border-[#162018]/30 ${
-                isFixedAmount
-                  ? 'cursor-default'
-                  : ''
-              }`}
-            />
-
-            <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-[#607060]">
-              NIM
-            </span>
-          </div>
-
-          <div className="mt-2 flex items-center justify-between text-xs text-[#607060]">
-            <span>
-              {isFixedAmount
-                ? 'Fixed commitment'
-                : 'Remaining'}
-            </span>
-
-            <span className="font-semibold">
-              {isFixedAmount
-                ? `${fixedAmountNim?.toLocaleString()} NIM`
-                : `${remainingAmount.toLocaleString()} NIM`}
-            </span>
+              aria-label={
+                t.contributeModal.close
+              }
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-lg text-white transition hover:bg-white/15 disabled:opacity-50"
+            >
+              ×
+            </button>
           </div>
         </div>
 
-        <div className="mt-5 rounded-2xl bg-[#f7f8f5] p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[#607060]">
-            Recipient
-          </p>
+        <div className="px-6 pb-6 pt-6">
+          {/* Amount */}
+          <div>
+            <div className="flex items-center justify-between gap-3">
+              <label
+                htmlFor="contribution-amount"
+                className="text-sm font-black text-slate-900"
+              >
+                {isFixedAmount
+                  ? t.contributeModal
+                      .creatorCommitment
+                  : t.contributeModal.amount}
+              </label>
 
-          <p className="mt-2 break-all font-mono text-xs leading-5 text-[#162018]/70">
-            {recipient}
-          </p>
-        </div>
+              <span className="rounded-full bg-lime-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-slate-700">
+                NIM
+              </span>
+            </div>
 
-        <div className="mt-4 rounded-2xl bg-[#f7f8f5] p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[#607060]">
-            Circle memo
-          </p>
+            <div className="relative mt-2">
+              <input
+                id="contribution-amount"
+                type="number"
+                inputMode="decimal"
+                min="0.00001"
+                max={remainingAmount}
+                step="0.00001"
+                value={amount}
+                onChange={(event) => {
+                  if (isFixedAmount) {
+                    return
+                  }
 
-          <p className="mt-2 break-all font-mono text-xs leading-5 text-[#162018]/70">
-            NC1:{circleId}
-          </p>
-        </div>
+                  setAmount(
+                    event.target.value,
+                  )
 
-        {error && (
-          <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4">
-            <p className="text-sm leading-5 text-red-700">
-              {error}
-            </p>
-          </div>
-        )}
-
-        <button
-          type="button"
-          onClick={handleContribute}
-          disabled={
-            isSubmitting ||
-            !isValidAmount
-          }
-          className="mt-5 min-h-13 w-full rounded-2xl bg-[#c7f36b] px-5 py-3 text-sm font-bold text-[#162018] shadow-sm transition-transform active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {isSubmitting
-            ? 'Confirming contribution...'
-            : isFixedAmount
-              ? `Contribute ${amount} NIM`
-              : `Contribute${
-                  amount
-                    ? ` ${amount} NIM`
+                  setError(null)
+                }}
+                readOnly={isFixedAmount}
+                disabled={isSubmitting}
+                placeholder="0"
+                className={`min-h-16 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 pr-20 text-2xl font-black text-slate-900 outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-900/5 ${
+                  isFixedAmount
+                    ? 'cursor-default'
                     : ''
                 }`}
-        </button>
+              />
 
-        <p className="mt-3 text-center text-xs leading-5 text-[#607060]">
-          Nimiq Pay will ask you to approve this
-          transaction.
-        </p>
+              <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm font-black text-slate-400">
+                NIM
+              </span>
+            </div>
+
+            <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
+              <span>
+                {isFixedAmount
+                  ? t.contributeModal
+                      .fixedCommitment
+                  : t.contributeModal.remaining}
+              </span>
+
+              <span className="font-bold text-slate-700">
+                {isFixedAmount
+                  ? `${fixedAmountNim?.toLocaleString()} NIM`
+                  : `${remainingAmount.toLocaleString()} NIM`}
+              </span>
+            </div>
+          </div>
+
+          {/* Recipient */}
+          <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div className="flex items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white text-slate-600">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  className="h-4 w-4"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 3.75 5.25 6.5v5.25c0 4.35 2.78 7.7 6.75 8.5 3.97-.8 6.75-4.15 6.75-8.5V6.5L12 3.75Z"
+                  />
+                </svg>
+              </div>
+
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
+                {t.contributeModal.recipient}
+              </p>
+            </div>
+
+            <p className="mt-3 break-all font-mono text-xs leading-5 text-slate-600">
+              {recipient}
+            </p>
+          </div>
+
+          {/* Memo */}
+          <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div className="flex items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white text-slate-600">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  className="h-4 w-4"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M5.25 5.25h13.5v13.5H5.25z"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M8.25 9h7.5M8.25 12h7.5M8.25 15h4.5"
+                  />
+                </svg>
+              </div>
+
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
+                {t.contributeModal.circleMemo}
+              </p>
+            </div>
+
+            <p className="mt-3 break-all font-mono text-xs leading-5 text-slate-600">
+              NC1:{circleId}
+            </p>
+          </div>
+
+          {/* Error */}
+          {error && (
+            <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4">
+              <div className="flex items-start gap-3">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-700">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    className="h-4 w-4"
+                    aria-hidden="true"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M12 8v4"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M12 16h.01"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"
+                    />
+                  </svg>
+                </div>
+
+                <p className="min-w-0 text-sm leading-5 text-red-700">
+                  {error}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Action */}
+          <button
+            type="button"
+            onClick={handleContribute}
+            disabled={
+              isSubmitting ||
+              !isValidAmount
+            }
+            className="mt-5 flex min-h-13 w-full items-center justify-center gap-2 rounded-2xl bg-lime-300 px-5 py-3 text-sm font-black text-slate-950 shadow-sm transition hover:bg-lime-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isSubmitting && (
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                className="h-4 w-4 animate-spin"
+                aria-hidden="true"
+              >
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="9"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  className="opacity-25"
+                />
+
+                <path
+                  d="M21 12a9 9 0 0 0-9-9"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
+            )}
+
+            {isSubmitting
+              ? t.contributeModal
+                  .confirmContribution
+              : isFixedAmount
+                ? t.contributeModal
+                    .contributeAmount.replace(
+                      '{amount}',
+                      amount,
+                    )
+                : amount
+                  ? t.contributeModal
+                      .contributeAmount.replace(
+                        '{amount}',
+                        amount,
+                      )
+                  : t.contributeModal.contribute}
+          </button>
+
+          <p className="mt-3 text-center text-xs leading-5 text-slate-400">
+            {t.contributeModal.walletApproval}
+          </p>
+        </div>
       </div>
     </div>
   )

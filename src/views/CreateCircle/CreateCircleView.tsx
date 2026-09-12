@@ -1,4 +1,11 @@
-import { useState } from 'react'
+import {
+  useState,
+  type FormEvent,
+} from 'react'
+
+import {
+  useLanguage,
+} from '../../i18n/useLanguage'
 
 interface CreateCircleViewProps {
   creatorWallet: string
@@ -16,11 +23,185 @@ interface CreateCircleViewProps {
 }
 
 function normalizeWalletAddress(
-  address: string,
-): string {
-  return address
+  value: string,
+) {
+  return value
     .trim()
     .replace(/\s+/g, '')
+}
+
+function ArrowLeftIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M15 18L9 12L15 6"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+function SparkIcon() {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M12 3L13.6 8.4L19 10L13.6 11.6L12 17L10.4 11.6L5 10L10.4 8.4L12 3Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M19 16L19.7 18.3L22 19L19.7 19.7L19 22L18.3 19.7L16 19L18.3 18.3L19 16Z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+function TargetIcon() {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <circle
+        cx="12"
+        cy="12"
+        r="8"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+      <circle
+        cx="12"
+        cy="12"
+        r="4"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+      <circle
+        cx="12"
+        cy="12"
+        r="1.5"
+        fill="currentColor"
+      />
+    </svg>
+  )
+}
+
+function WalletIcon() {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M4 7.5C4 6.67 4.67 6 5.5 6H19C19.55 6 20 6.45 20 7V18C20 18.55 19.55 19 19 19H5C4.45 19 4 18.55 4 18V7.5Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M4 9H17.5C18.88 9 20 10.12 20 11.5V14H16.5C15.67 14 15 13.33 15 12.5C15 11.67 15.67 11 16.5 11H20"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+function CalendarIcon() {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <rect
+        x="4"
+        y="5"
+        width="16"
+        height="15"
+        rx="2"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M8 3V7M16 3V7M4 10H20"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+function CommitmentIcon() {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M12 3V21"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+      <path
+        d="M16.5 7.5C16.5 6.12 14.49 5 12 5C9.51 5 7.5 6.12 7.5 7.5C7.5 8.88 9.51 10 12 10C14.49 10 16.5 11.12 16.5 12.5C16.5 13.88 14.49 15 12 15C9.51 15 7.5 13.88 7.5 12.5"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+      <path
+        d="M16.5 16.5C16.5 17.88 14.49 19 12 19C9.51 19 7.5 17.88 7.5 16.5"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+function SectionIcon({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+      {children}
+    </div>
+  )
 }
 
 export default function CreateCircleView({
@@ -29,19 +210,57 @@ export default function CreateCircleView({
   onCreate,
   loading = false,
 }: CreateCircleViewProps) {
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
-  const [targetAmount, setTargetAmount] = useState('')
-  const [deadline, setDeadline] = useState('')
-  const [goalOwnerWallet, setGoalOwnerWallet] =
-    useState('')
-  const [creatorCommitment, setCreatorCommitment] =
-    useState('0')
-  const [error, setError] =
-    useState<string | null>(null)
+  const {
+    t,
+  } = useLanguage()
+
+  const [
+    name,
+    setName,
+  ] = useState('')
+
+  const [
+    description,
+    setDescription,
+  ] = useState('')
+
+  const [
+    targetAmount,
+    setTargetAmount,
+  ] = useState('')
+
+  const [
+    deadline,
+    setDeadline,
+  ] = useState('')
+
+  const [
+    goalOwnerWallet,
+    setGoalOwnerWallet,
+  ] = useState(
+    creatorWallet,
+  )
+
+  const [
+    creatorCommitment,
+    setCreatorCommitment,
+  ] = useState('0')
+
+  const [
+    error,
+    setError,
+  ] = useState('')
+
+  const creatorIsGoalOwner =
+    normalizeWalletAddress(
+      goalOwnerWallet,
+    ).toLowerCase() ===
+    normalizeWalletAddress(
+      creatorWallet,
+    ).toLowerCase()
 
   async function handleSubmit(
-    event: React.FormEvent<HTMLFormElement>,
+    event: FormEvent,
   ) {
     event.preventDefault()
 
@@ -49,7 +268,7 @@ export default function CreateCircleView({
       return
     }
 
-    setError(null)
+    setError('')
 
     const parsedTargetAmount =
       Number(targetAmount)
@@ -59,7 +278,7 @@ export default function CreateCircleView({
 
     if (!name.trim()) {
       setError(
-        'Give your Circle a name.',
+        t.createCircle.nameRequired,
       )
       return
     }
@@ -71,7 +290,7 @@ export default function CreateCircleView({
       parsedTargetAmount <= 0
     ) {
       setError(
-        'Enter a valid target amount.',
+        t.createCircle.targetInvalid,
       )
       return
     }
@@ -83,7 +302,7 @@ export default function CreateCircleView({
       parsedCreatorCommitment < 0
     ) {
       setError(
-        'Enter a valid creator commitment.',
+        t.createCircle.commitmentInvalid,
       )
       return
     }
@@ -93,29 +312,32 @@ export default function CreateCircleView({
       parsedTargetAmount
     ) {
       setError(
-        'Your creator commitment cannot be greater than the target amount.',
+        t.createCircle.commitmentTooHigh,
       )
       return
     }
 
     if (!deadline) {
       setError(
-        'Choose a deadline.',
+        t.createCircle.deadlineRequired,
       )
       return
     }
 
-    const deadlineTimestamp =
-      new Date(deadline).getTime()
+    const deadlineDate =
+      new Date(
+        `${deadline}T23:59:59`,
+      )
 
     if (
       Number.isNaN(
-        deadlineTimestamp,
+        deadlineDate.getTime(),
       ) ||
-      deadlineTimestamp <= Date.now()
+      deadlineDate.getTime() <=
+        Date.now()
     ) {
       setError(
-        'The deadline must be a valid future date.',
+        t.createCircle.deadlineInvalid,
       )
       return
     }
@@ -132,293 +354,396 @@ export default function CreateCircleView({
       normalizedGoalOwner.length < 20
     ) {
       setError(
-        'Enter a valid Nimiq wallet address.',
+        t.createCircle.walletInvalid,
       )
       return
     }
 
     try {
       await onCreate({
-        name:
-          name.trim(),
-
+        name: name.trim(),
         description:
           description.trim(),
-
         targetAmount:
           parsedTargetAmount,
-
         deadline,
-
         goalOwnerWallet:
           normalizedGoalOwner,
-
         creatorCommitment:
           parsedCreatorCommitment,
       })
-    } catch (requestError) {
-      const message =
-        requestError instanceof Error
-          ? requestError.message
-          : String(requestError)
-
-      setError(message)
+    } catch (submitError) {
+      setError(
+        submitError instanceof Error
+          ? submitError.message
+          : t.createCircle.targetInvalid,
+      )
     }
   }
 
-  const normalizedGoalOwnerForDisplay =
-    normalizeWalletAddress(
-      goalOwnerWallet,
-    )
-
-  const normalizedCreatorWalletForDisplay =
-    normalizeWalletAddress(
-      creatorWallet,
-    )
-
-  const creatorIsGoalOwner =
-    normalizedGoalOwnerForDisplay.length > 0 &&
-    normalizedGoalOwnerForDisplay
-      .toLowerCase() ===
-      normalizedCreatorWalletForDisplay.toLowerCase()
-
   return (
-    <section className="py-6">
-      <button
-        type="button"
-        onClick={onBack}
-        disabled={loading}
-        className="mb-6 min-h-11 text-sm font-semibold text-[#607060] disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        ← Back
-      </button>
-
-      <div>
-        <p className="text-sm font-semibold uppercase tracking-[0.14em] text-[#607060]">
-          New Circle
-        </p>
-
-        <h1 className="mt-2 text-3xl font-bold tracking-tight">
-          Create a shared goal
-        </h1>
-
-        <p className="mt-3 text-sm leading-6 text-[#607060]">
-          Set the goal, who it is for, your commitment,
-          and the deadline. Then share the Circle with
-          everyone contributing.
-        </p>
-      </div>
-
-      <form
-        onSubmit={handleSubmit}
-        className="mt-8 space-y-5"
-      >
-        <div>
-          <label
-            htmlFor="circle-name"
-            className="mb-2 block text-sm font-bold"
-          >
-            Circle name
-          </label>
-
-          <input
-            id="circle-name"
-            value={name}
-            onChange={(event) =>
-              setName(event.target.value)
-            }
-            maxLength={80}
+    <div className="min-h-screen bg-slate-50 pb-24">
+      {/* Hero */}
+      <section className="bg-slate-950 px-4 pb-8 pt-4 text-white">
+        <div className="mx-auto w-full max-w-md">
+          <button
+            type="button"
+            onClick={onBack}
             disabled={loading}
-            placeholder="e.g. New apartment"
-            className="w-full rounded-2xl border border-black/10 bg-white px-4 py-4 outline-none focus:border-[#162018]/30 focus:ring-2 focus:ring-[#dff5a8] disabled:cursor-not-allowed disabled:bg-gray-100"
-          />
-        </div>
-
-        <div>
-          <label
-            htmlFor="circle-description"
-            className="mb-2 block text-sm font-bold"
+            className="mb-7 flex items-center gap-2 text-sm font-medium text-slate-300 transition hover:text-white disabled:opacity-50"
           >
-            Description
-          </label>
+            <ArrowLeftIcon />
+            {t.createCircle.back}
+          </button>
 
-          <textarea
-            id="circle-description"
-            value={description}
-            onChange={(event) =>
-              setDescription(
-                event.target.value,
-              )
-            }
-            maxLength={500}
-            rows={4}
-            disabled={loading}
-            placeholder="What are you saving for?"
-            className="w-full resize-none rounded-2xl border border-black/10 bg-white px-4 py-4 outline-none focus:border-[#162018]/30 focus:ring-2 focus:ring-[#dff5a8] disabled:cursor-not-allowed disabled:bg-gray-100"
-          />
-        </div>
-
-        <div>
-          <label
-            htmlFor="circle-target"
-            className="mb-2 block text-sm font-bold"
-          >
-            Target amount
-          </label>
-
-          <div className="relative">
-            <input
-              id="circle-target"
-              type="number"
-              min="0.00001"
-              step="0.00001"
-              inputMode="decimal"
-              value={targetAmount}
-              onChange={(event) =>
-                setTargetAmount(
-                  event.target.value,
-                )
-              }
-              disabled={loading}
-              placeholder="1000"
-              className="w-full rounded-2xl border border-black/10 bg-white px-4 py-4 pr-16 outline-none focus:border-[#162018]/30 focus:ring-2 focus:ring-[#dff5a8] disabled:cursor-not-allowed disabled:bg-gray-100"
-            />
-
-            <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-[#607060]">
-              NIM
-            </span>
+          <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-400/10 text-emerald-300">
+            <SparkIcon />
           </div>
-        </div>
 
-        <div>
-          <label
-            htmlFor="circle-goal-owner"
-            className="mb-2 block text-sm font-bold"
-          >
-            Goal owner wallet
-          </label>
-
-          <input
-            id="circle-goal-owner"
-            type="text"
-            value={goalOwnerWallet}
-            onChange={(event) => {
-              setGoalOwnerWallet(
-                event.target.value,
-              )
-              setError(null)
-            }}
-            disabled={loading}
-            placeholder="nq... ... ... ..."
-            autoComplete="off"
-            spellCheck={false}
-            className="w-full rounded-2xl border border-black/10 bg-white px-4 py-4 font-mono text-sm outline-none focus:border-[#162018]/30 focus:ring-2 focus:ring-[#dff5a8] disabled:cursor-not-allowed disabled:bg-gray-100"
-          />
-
-          <p className="mt-2 text-xs leading-5 text-[#607060]">
-            This is the wallet that receives all
-            contributions. It can be your own wallet or
-            someone else's.
+          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-300">
+            {t.createCircle.newCircle}
           </p>
 
-          {creatorIsGoalOwner && (
-            <div className="mt-3 rounded-2xl bg-[#eff9d7] p-3">
-              <p className="text-xs leading-5 text-[#162018]">
-                This is a personal Circle. Your commitment
-                will be recorded as your fixed pledge, but
-                you will not send NIM to yourself.
-              </p>
+          <h1 className="text-3xl font-bold tracking-tight">
+            {t.createCircle.heading}
+          </h1>
+
+          <p className="mt-3 max-w-sm text-sm leading-6 text-slate-300">
+            {t.createCircle.description}
+          </p>
+        </div>
+      </section>
+
+      <main className="mx-auto w-full max-w-md px-4 py-6">
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-5"
+        >
+          {/* Basic details */}
+          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="mb-5 flex items-center gap-3">
+              <SectionIcon>
+                <TargetIcon />
+              </SectionIcon>
+
+              <div>
+                <h2 className="text-sm font-bold text-slate-900">
+                  {t.createCircle.circleName}
+                </h2>
+
+                <p className="mt-0.5 text-xs text-slate-500">
+                  {t.createCircle.descriptionLabel}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-5">
+              <div>
+                <label
+                  htmlFor="circle-name"
+                  className="mb-2 block text-sm font-semibold text-slate-900"
+                >
+                  {t.createCircle.circleName}
+                </label>
+
+                <input
+                  id="circle-name"
+                  type="text"
+                  value={name}
+                  onChange={(event) =>
+                    setName(
+                      event.target.value,
+                    )
+                  }
+                  placeholder={
+                    t.createCircle
+                      .circleNamePlaceholder
+                  }
+                  maxLength={80}
+                  disabled={loading}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 disabled:bg-slate-100"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="circle-description"
+                  className="mb-2 block text-sm font-semibold text-slate-900"
+                >
+                  {t.createCircle
+                    .descriptionLabel}
+                </label>
+
+                <textarea
+                  id="circle-description"
+                  value={description}
+                  onChange={(event) =>
+                    setDescription(
+                      event.target.value,
+                    )
+                  }
+                  placeholder={
+                    t.createCircle
+                      .descriptionPlaceholder
+                  }
+                  maxLength={500}
+                  rows={4}
+                  disabled={loading}
+                  className="w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 disabled:bg-slate-100"
+                />
+              </div>
+            </div>
+          </section>
+
+          {/* Goal */}
+          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="mb-5 flex items-center gap-3">
+              <SectionIcon>
+                <TargetIcon />
+              </SectionIcon>
+
+              <div>
+                <h2 className="text-sm font-bold text-slate-900">
+                  {t.createCircle.targetAmount}
+                </h2>
+
+                <p className="mt-0.5 text-xs text-slate-500">
+                  {t.createCircle.goalOwnerDescription}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-5">
+              <div>
+                <label
+                  htmlFor="target-amount"
+                  className="mb-2 block text-sm font-semibold text-slate-900"
+                >
+                  {t.createCircle.targetAmount}
+                </label>
+
+                <div className="relative">
+                  <input
+                    id="target-amount"
+                    type="number"
+                    min="1"
+                    step="any"
+                    value={targetAmount}
+                    onChange={(event) =>
+                      setTargetAmount(
+                        event.target.value,
+                      )
+                    }
+                    placeholder={
+                      t.createCircle
+                        .targetPlaceholder
+                    }
+                    disabled={loading}
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 pr-16 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 disabled:bg-slate-100"
+                  />
+
+                  <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-500">
+                    NIM
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="goal-owner-wallet"
+                  className="mb-2 block text-sm font-semibold text-slate-900"
+                >
+                  {t.createCircle
+                    .goalOwnerWallet}
+                </label>
+
+                <div className="relative">
+                  <div className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                    <WalletIcon />
+                  </div>
+
+                  <input
+                    id="goal-owner-wallet"
+                    type="text"
+                    value={goalOwnerWallet}
+                    onChange={(event) =>
+                      setGoalOwnerWallet(
+                        event.target.value,
+                      )
+                    }
+                    placeholder={
+                      t.createCircle
+                        .goalOwnerPlaceholder
+                    }
+                    disabled={loading}
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-12 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 disabled:bg-slate-100"
+                  />
+                </div>
+
+                <p className="mt-2 text-xs leading-5 text-slate-500">
+                  {
+                    t.createCircle
+                      .goalOwnerDescription
+                  }
+                </p>
+
+                {creatorIsGoalOwner && (
+                  <div className="mt-3 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3">
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5 text-emerald-600">
+                        <TargetIcon />
+                      </div>
+
+                      <p className="text-xs leading-5 text-emerald-800">
+                        {
+                          t.createCircle
+                            .personalCircle
+                        }
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+
+          {/* Contribution & deadline */}
+          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="mb-5 flex items-center gap-3">
+              <SectionIcon>
+                <CommitmentIcon />
+              </SectionIcon>
+
+              <div>
+                <h2 className="text-sm font-bold text-slate-900">
+                  {t.createCircle.creatorCommitment}
+                </h2>
+
+                <p className="mt-0.5 text-xs text-slate-500">
+                  {t.createCircle.commitmentDescription}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-5">
+              <div>
+                <label
+                  htmlFor="creator-commitment"
+                  className="mb-2 block text-sm font-semibold text-slate-900"
+                >
+                  {
+                    t.createCircle
+                      .creatorCommitment
+                  }
+                </label>
+
+                <div className="relative">
+                  <input
+                    id="creator-commitment"
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={creatorCommitment}
+                    onChange={(event) =>
+                      setCreatorCommitment(
+                        event.target.value,
+                      )
+                    }
+                    placeholder={
+                      t.createCircle
+                        .commitmentPlaceholder
+                    }
+                    disabled={loading}
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 pr-16 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 disabled:bg-slate-100"
+                  />
+
+                  <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-500">
+                    NIM
+                  </span>
+                </div>
+
+                <p className="mt-2 text-xs leading-5 text-slate-500">
+                  {
+                    t.createCircle
+                      .commitmentDescription
+                  }
+                </p>
+
+                {creatorIsGoalOwner && (
+                  <div className="mt-3 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3">
+                    <p className="text-xs leading-5 text-emerald-800">
+                      {
+                        t.createCircle
+                          .personalCommitmentDescription
+                      }
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label
+                  htmlFor="circle-deadline"
+                  className="mb-2 block text-sm font-semibold text-slate-900"
+                >
+                  {t.createCircle.deadline}
+                </label>
+
+                <div className="relative">
+                  <div className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                    <CalendarIcon />
+                  </div>
+
+                  <input
+                    id="circle-deadline"
+                    type="date"
+                    value={deadline}
+                    onChange={(event) =>
+                      setDeadline(
+                        event.target.value,
+                      )
+                    }
+                    disabled={loading}
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-12 pr-4 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 disabled:bg-slate-100"
+                  />
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Error */}
+          {error && (
+            <div className="rounded-3xl border border-red-200 bg-red-50 px-4 py-4">
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-100 text-xs font-bold text-red-600">
+                  !
+                </div>
+
+                <p className="text-sm leading-5 text-red-700">
+                  {error}
+                </p>
+              </div>
             </div>
           )}
-        </div>
 
-        <div>
-          <label
-            htmlFor="creator-commitment"
-            className="mb-2 block text-sm font-bold"
-          >
-            Your commitment
-          </label>
-
-          <div className="relative">
-            <input
-              id="creator-commitment"
-              type="number"
-              min="0"
-              step="0.00001"
-              inputMode="decimal"
-              value={creatorCommitment}
-              onChange={(event) => {
-                setCreatorCommitment(
-                  event.target.value,
-                )
-                setError(null)
-              }}
+          {/* Submit */}
+          <div className="pt-1">
+            <button
+              type="submit"
               disabled={loading}
-              placeholder="0"
-              className="w-full rounded-2xl border border-black/10 bg-white px-4 py-4 pr-16 outline-none focus:border-[#162018]/30 focus:ring-2 focus:ring-[#dff5a8] disabled:cursor-not-allowed disabled:bg-gray-100"
-            />
+              className="flex w-full items-center justify-center rounded-2xl bg-emerald-600 px-4 py-3.5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {loading
+                ? t.createCircle.creating
+                : t.createCircle.createCircle}
+            </button>
 
-            <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-[#607060]">
-              NIM
-            </span>
-          </div>
-
-          <p className="mt-2 text-xs leading-5 text-[#607060]">
-            Your commitment is fixed when this Circle is
-            created. It is included in the goal plan and
-            cannot be changed later.
-          </p>
-
-          {creatorIsGoalOwner && (
-            <p className="mt-2 text-xs leading-5 text-[#607060]">
-              Because this is your own goal, the commitment
-              is a product-level pledge rather than a
-              payment to yourself.
-            </p>
-          )}
-        </div>
-
-        <div>
-          <label
-            htmlFor="circle-deadline"
-            className="mb-2 block text-sm font-bold"
-          >
-            Deadline
-          </label>
-
-          <input
-            id="circle-deadline"
-            type="date"
-            value={deadline}
-            onChange={(event) =>
-              setDeadline(
-                event.target.value,
-              )
-            }
-            disabled={loading}
-            className="w-full rounded-2xl border border-black/10 bg-white px-4 py-4 outline-none focus:border-[#162018]/30 focus:ring-2 focus:ring-[#dff5a8] disabled:cursor-not-allowed disabled:bg-gray-100"
-          />
-        </div>
-
-        {error && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
-            <p className="text-sm font-semibold text-red-700">
-              {error}
+            <p className="mt-3 text-center text-xs leading-5 text-slate-400">
+              {t.createCircle.commitmentDescription}
             </p>
           </div>
-        )}
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="min-h-12 w-full rounded-2xl bg-[#162018] px-5 py-3 text-sm font-bold text-white transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100"
-        >
-          {loading
-            ? 'Creating Circle...'
-            : 'Create Circle'}
-        </button>
-      </form>
-    </section>
+        </form>
+      </main>
+    </div>
   )
 }

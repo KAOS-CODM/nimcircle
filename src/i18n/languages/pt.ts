@@ -1,0 +1,387 @@
+import type { LanguageTranslations } from '../translationTypes'
+
+export const pt = {
+  navigation: {
+    home: 'Início',
+    circles: 'Círculos',
+    create: 'Criar',
+    profile: 'Perfil',
+  },
+
+  home: {
+    welcomeBack: 'Bem-vindo de volta',
+    description: 'Poupe juntos. Alcancem objetivos juntos.',
+    startAGoal: 'Começar um objetivo',
+    createCircle: 'Criar um Círculo',
+    createCircleDescription:
+      'Defina uma meta de poupança e convide outras pessoas a contribuir.',
+    yourGoals: 'Os seus objetivos',
+    created: 'Criados',
+    joined: 'Participados',
+    totalRaised: 'Total arrecadado',
+    nimAcrossActiveGoals: 'NIM em objetivos ativos',
+    activeGoals: 'Objetivos ativos',
+    activeGoalsDescription:
+      'Acompanhe os objetivos que está a ajudar a alcançar.',
+    viewAll: 'Ver tudo',
+    noActiveGoals: 'Nenhum objetivo ativo',
+    noActiveGoalsDescription:
+      'Ainda não tem objetivos de poupança ativos.',
+    yourFirstCircle: 'O seu primeiro Círculo',
+    yourFirstCircleDescription:
+      'Crie um objetivo de poupança partilhado e comecem a contribuir juntos.',
+    activeGoal: 'Objetivo ativo',
+    sharedNimSavingsGoal: 'Objetivo de poupança NIM partilhado',
+    nimRaised: 'NIM arrecadados',
+    nimToGo: 'NIM restantes',
+    contributor: 'Contribuidor',
+    contributors: 'Contribuidores',
+    viewAllGoals: 'Ver todos os objetivos',
+  },
+
+  circles: {
+    title: 'Círculos',
+    heading: 'Os seus Círculos',
+    description: 'Objetivos que criou ou aos quais aderiu.',
+    create: 'Criar Círculo',
+    created: 'Criados',
+    joined: 'Participados',
+    createdGoalTarget: 'Meta dos Círculos criados',
+    joinedGoalTarget: 'Meta dos Círculos participados',
+    across: 'em',
+    circle: 'Círculo',
+    circles: 'Círculos',
+    loading: 'A carregar Círculos...',
+    noJoinedCircles: 'Nenhum Círculo participado',
+    joinedDescription:
+      'Os Círculos para os quais contribui aparecerão aqui.',
+    createFirstCircle: 'Crie o seu primeiro Círculo',
+    createFirstDescription:
+      'Comece um objetivo de poupança NIM partilhado com amigos, família ou comunidade.',
+    createCircle: 'Criar Círculo',
+    noDescription: 'Sem descrição',
+    raised: 'Arrecadado',
+    target: 'Meta',
+    funded: 'financiado',
+    contributor: 'Contribuidor',
+    contributors: 'Contribuidores',
+    creatorCommitment: 'Compromisso do criador',
+    deadline: 'Prazo',
+    goalOwner: 'Proprietário do objetivo',
+    openCircle: 'Abrir Círculo',
+  },
+
+  createCircle: {
+    back: 'Voltar',
+    newCircle: 'Novo Círculo',
+    heading: 'Criar um objetivo de poupança',
+    description:
+      'Defina uma meta, escolha o proprietário do objetivo e decida quanto irá contribuir.',
+    circleName: 'Nome do Círculo',
+    circleNamePlaceholder: 'ex. Novo portátil',
+    descriptionLabel: 'Descrição',
+    descriptionPlaceholder: 'Para que está a poupar?',
+    targetAmount: 'Valor da meta',
+    targetPlaceholder: 'ex. 100',
+    goalOwnerWallet: 'Carteira do proprietário',
+    goalOwnerPlaceholder: 'endereço de carteira nq...',
+    goalOwnerDescription:
+      'Os NIM serão enviados para esta carteira quando o objetivo for concluído.',
+    personalCircle: 'Círculo pessoal',
+    creatorCommitment: 'O seu compromisso',
+    commitmentPlaceholder: 'ex. 20',
+    commitmentDescription:
+      'O valor que se compromete a contribuir para este Círculo.',
+    personalCommitmentDescription:
+      'O seu compromisso faz parte da meta e não pode ser alterado após a criação.',
+    deadline: 'Prazo',
+    nameRequired: 'Introduza um nome para o Círculo.',
+    targetInvalid:
+      'Introduza um valor de meta válido superior a 0.',
+    commitmentInvalid:
+      'Introduza um valor de compromisso válido.',
+    commitmentTooHigh:
+      'O seu compromisso não pode ser superior ao valor da meta.',
+    deadlineRequired: 'Escolha um prazo.',
+    deadlineInvalid: 'Escolha um prazo futuro.',
+    walletInvalid:
+      'Introduza um endereço de carteira Nimiq válido.',
+    creating: 'A criar...',
+    createCircle: 'Criar Círculo',
+  },
+
+  circle: {
+    back: 'Voltar',
+    loading: 'A carregar Círculo...',
+    loadingDescription:
+      'A obter as informações mais recentes do Círculo.',
+    unableToLoad: 'Não foi possível carregar o Círculo',
+    tryAgain: 'Tente novamente.',
+    refreshError:
+      'Ocorreu um erro ao atualizar este Círculo.',
+    retrying: 'A tentar novamente...',
+    retry: 'Tentar novamente',
+    sharedGoal: 'Objetivo partilhado',
+    completed: 'Concluído',
+    cancelled: 'Cancelado',
+    expired: 'Expirado',
+    active: 'Ativo',
+    raised: 'Arrecadado',
+    target: 'Meta',
+    complete: 'concluído',
+    goalReached: 'Objetivo alcançado',
+    remaining: 'restante',
+    deadline: 'Prazo',
+    contributors: 'Contribuidores',
+    contributor: 'Contribuidor',
+    peopleContributing: 'pessoas a contribuir',
+    personContributing: 'pessoa a contribuir',
+    shareCircle: 'Partilhar Círculo',
+    linkCopied: 'Ligação copiada',
+    unableToCopy: 'Não foi possível copiar a ligação',
+    aboutCircle: 'Sobre este Círculo',
+    creator: 'Criador',
+    goalOwner: 'Proprietário do objetivo',
+    creatorCommitment: 'Compromisso do criador',
+    created: 'Criado',
+    contributorsDescription:
+      'Pessoas que contribuíram para este objetivo.',
+    loadingContributors: 'A carregar contribuidores...',
+    noContributors: 'Ainda não há contribuidores',
+    noContributorsDescription:
+      'Seja a primeira pessoa a contribuir para este Círculo.',
+    contributionHistory: 'Histórico de contribuições',
+    contributionHistoryDescription:
+      'Contribuições recentes feitas para este Círculo.',
+    loadingContributionHistory:
+      'A carregar histórico de contribuições...',
+    noContributions: 'Ainda não há contribuições',
+    noContributionsDescription:
+      'As contribuições aparecerão aqui quando forem confirmadas.',
+    contribution: 'Contribuição',
+    confirmed: 'Confirmada',
+    creatorControls: 'Controlos do criador',
+    manageCircle: 'Gerir Círculo',
+    fixedCommitment: 'Compromisso fixo',
+    cannotChange:
+      'O seu compromisso não pode ser alterado após a criação.',
+    extendDeadline: 'Prolongar prazo',
+    extendDeadlineDescription:
+      'Dê mais tempo a este Círculo para atingir o seu objetivo.',
+    cancelCircle: 'Cancelar Círculo',
+    cancelCircleDescription:
+      'Cancele este Círculo se já não quiser continuar.',
+    cancelConfirm: 'Cancelar Círculo?',
+    cancelWarning:
+      'Esta ação não pode ser desfeita. Os contribuidores deixarão de poder contribuir.',
+    keepCircle: 'Manter Círculo',
+    cancelling: 'A cancelar...',
+    giveMoreTime: 'Dar mais tempo',
+    newDeadline: 'Novo prazo',
+    newDeadlineDescription:
+      'Escolha um novo prazo posterior ao atual.',
+    closeDeadlineEditor: 'Fechar editor de prazo',
+    updateDeadline: 'Atualizar prazo',
+    updatingDeadline: 'A atualizar prazo...',
+    chooseNewDeadline: 'Escolha um novo prazo',
+    validNewDeadline:
+      'Escolha um prazo posterior ao prazo atual.',
+    currentDeadlineInvalid:
+      'O prazo atual já não é válido.',
+    newDeadlineMustBeLater:
+      'O novo prazo deve ser posterior ao atual.',
+    goalCompleted: 'Objetivo concluído',
+    deadlineUnavailable: 'Prazo indisponível',
+    deadlinePassed: 'Prazo ultrapassado',
+    lessThanDay: 'Menos de um dia restante',
+    daysLeft: 'dias restantes',
+    goalReachedDescription:
+      'Este Círculo atingiu o seu objetivo de poupança.',
+    circleExpired: 'Círculo expirado',
+    circleExpiredDescription:
+      'O prazo terminou antes de o objetivo de poupança ser alcançado.',
+    circleCancelled: 'Círculo cancelado',
+    circleCancelledDescription:
+      'Este Círculo foi cancelado pelo seu criador.',
+    contributeNim: 'Contribuir com NIM',
+    contributeAmount: 'Valor da contribuição',
+    creatorCommitmentUnavailable:
+      'Compromisso do criador indisponível',
+    goalFullyFunded: 'Objetivo totalmente financiado',
+    creatorContributionDescription:
+      'O criador comprometeu-se a contribuir para este Círculo.',
+    goalOwnerDescription:
+      'Esta carteira receberá os NIM quando o objetivo for concluído.',
+    noCreatorCommitmentDescription:
+      'O criador não definiu um compromisso para este Círculo.',
+    contributorDescription:
+      'Obrigado por ajudar este Círculo a alcançar o seu objetivo.',
+  },
+
+  profile: {
+    account: 'Conta',
+    yourProfile: 'O seu perfil',
+    profileDescription:
+      'Gira o seu perfil e veja a sua atividade de contribuições.',
+    created: 'Criados',
+    joined: 'Participados',
+    nimGiven: 'NIM dados',
+    supported: 'Apoiados',
+    recentContributions: 'Contribuições recentes',
+    recentContributionsDescription:
+      'As suas últimas contribuições confirmadas.',
+    yourWallet: 'A sua carteira',
+    copyAddress: 'Copiar endereço',
+    addressCopied: 'Endereço copiado',
+    memberSince: 'Membro desde',
+    unableToLoadActivity:
+      'Não foi possível carregar a atividade',
+    noContributions: 'Ainda não há contribuições',
+    noContributionsDescription:
+      'As suas contribuições confirmadas aparecerão aqui.',
+    language: 'Idioma',
+    languageDescription:
+      'Escolha o idioma que pretende utilizar no NimCircle.',
+  },
+
+  connectWallet: {
+    eyebrow: 'NimCircle',
+    title: 'Poupe em conjunto.',
+    description:
+      'Cria objetivos NIM partilhados, convida outras pessoas e acompanha todos a contribuir para o mesmo objetivo.',
+    walletCardTitle: 'Ligar a carteira Nimiq',
+    walletCardDescription:
+      'O NimCircle utiliza a tua carteira Nimiq Pay para te identificar e enviar contribuições em NIM.',
+    connect: 'Ligar carteira',
+    connecting: 'A ligar...',
+    connectionFailed: 'Falha ao ligar a carteira',
+    diagnostics: 'Estado da ligação',
+    nimiqProvider: 'Provedor Nimiq',
+    ready: 'Pronto',
+    notInitialized: 'Não inicializado',
+    wallet: 'Carteira',
+    notConnected: 'Não ligada',
+    securityNote:
+      'As tuas chaves privadas nunca saem do Nimiq Pay.',
+  },
+
+  walletRestoring: {
+    eyebrow: 'NimCircle',
+    title: 'A iniciar o NimCircle',
+    description: 'A ligar ao Nimiq Pay...',
+    initializing: 'A inicializar a ligação à tua carteira',
+  },
+
+  welcomeBack: {
+    eyebrow: 'NimCircle',
+    title: 'Bem-vindo de volta, {name}',
+    description:
+      'A tua carteira e o teu perfil estão prontos. Vamos voltar aos teus círculos.',
+    continue: 'Continuar',
+  },
+
+  contributeModal: {
+    sharedGoal: 'Objetivo partilhado',
+    contributeNim: 'Contribuir NIM',
+    confirmCreatorCommitment: 'Confirmar compromisso do criador',
+    amount: 'Montante',
+    creatorCommitment: 'Compromisso do criador',
+    fixedCommitment: 'Compromisso fixo',
+    remaining: 'Restante',
+    recipient: 'Destinatário',
+    circleMemo: 'Memo do círculo',
+    close: 'Fechar',
+    contribute: 'Contribuir',
+    contributeAmount: 'Contribuir {amount} NIM',
+    confirmContribution: 'A confirmar contribuição...',
+    transaction: 'Transação',
+    contributionConfirmed: 'Contribuição confirmada',
+    contributionConfirmedDescription:
+      'A tua contribuição de {amount} NIM foi confirmada na blockchain Nimiq.',
+    done: 'Concluído',
+    walletApproval:
+      'O Nimiq Pay irá pedir-te para aprovares esta transação.',
+    validAmount: 'Introduz um montante NIM válido.',
+    maximumAmount:
+      'Podes contribuir no máximo {amount} NIM.',
+    minimumAmount:
+      'A contribuição mínima é de 0.00001 NIM.',
+    creatorCommitmentCannotChange:
+      'O teu compromisso como criador não pode ser alterado.',
+    invalidRecipient:
+      'Este círculo tem um endereço de destinatário inválido.',
+    transactionCancelled:
+      'Cancelaste a transação.',
+    serverUnavailable:
+      'Não foi possível contactar o servidor do NimCircle. Verifica a tua ligação e tenta novamente.',
+    processingError:
+      'Ocorreu um erro ao processar a contribuição. Tenta novamente.',
+    transactionConfirmationFailed:
+      'Não foi possível confirmar a transação.',
+    transactionSentWarning:
+      'A tua transação foi enviada, mas o NimCircle não conseguiu concluir o processamento. Os teus fundos podem já ter sido transferidos.',
+    unknownTransaction: 'desconhecida',
+    transactionLabel: 'Transação: {hash}',
+    paymentNoAccount:
+      'Não está ligada nenhuma conta Nimiq.',
+    
+    paymentInvalidRecipient:
+      'Este círculo tem um endereço de destinatário inválido.',
+    
+    paymentInvalidRecipientFormat:
+      'O destinatário do círculo não é um endereço Nimiq válido.',
+    
+    paymentMissingCircleId:
+      'Falta o ID do círculo.',
+    
+    paymentConsensusNotEstablished:
+      'O consenso Nimiq ainda não está estabelecido. Aguarda que o Nimiq Pay termine a sincronização e tenta novamente.',
+    
+    paymentAmountInvalid:
+      'O montante em NIM deve ser superior a zero.',
+    
+    paymentAmountTooLarge:
+      'O montante em NIM é demasiado elevado.',
+    
+    paymentTransactionFailed:
+      'O Nimiq Pay não conseguiu enviar a transação.',
+  },
+
+  profileSetup: {
+    eyebrow: 'NimCircle',
+    title: 'Cria o teu perfil',
+    description:
+      'Escolhe um nome de utilizador e um nome que os membros do teu círculo possam reconhecer.',
+    username: 'Nome de utilizador',
+    usernamePlaceholder: 'kaos',
+    usernameHint:
+      '3–20 caracteres usando letras, números ou underscores.',
+    displayName: 'Nome apresentado',
+    displayNamePlaceholder: 'ex.: Kaos',
+    connectedWallet: 'Carteira ligada',
+    createProfile: 'Criar perfil',
+    pleaseChooseUsername:
+      'Escolhe um nome de utilizador.',
+    usernameTooShort:
+      'O teu nome de utilizador deve ter pelo menos 3 caracteres.',
+    usernameTooLong:
+      'O teu nome de utilizador deve ter 20 caracteres ou menos.',
+    usernameInvalid:
+      'O nome de utilizador só pode conter letras, números e underscores.',
+    pleaseEnterDisplayName:
+      'Introduz um nome apresentado.',
+    displayNameTooShort:
+      'O teu nome apresentado deve ter pelo menos 2 caracteres.',
+    displayNameTooLong:
+      'O teu nome apresentado deve ter 30 caracteres ou menos.',
+  },
+
+  language: {
+    title: 'Idioma',
+    english: 'English',
+    spanish: 'Español',
+    german: 'Deutsch',
+    french: 'Français',
+    portuguese: 'Português',
+  },
+} satisfies LanguageTranslations

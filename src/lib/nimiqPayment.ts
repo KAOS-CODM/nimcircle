@@ -2,6 +2,32 @@ import { getNimiq } from './nimiq'
 
 const LUNA_PER_NIM = 100_000
 
+export const PAYMENT_ERROR_CODES = {
+  NO_ACCOUNT: 'NIMIQ_NO_ACCOUNT',
+  INVALID_RECIPIENT: 'NIMIQ_INVALID_RECIPIENT',
+  INVALID_RECIPIENT_FORMAT:
+    'NIMIQ_INVALID_RECIPIENT_FORMAT',
+  MISSING_CIRCLE_ID: 'NIMIQ_MISSING_CIRCLE_ID',
+  CONSENSUS_NOT_ESTABLISHED:
+    'NIMIQ_CONSENSUS_NOT_ESTABLISHED',
+  AMOUNT_INVALID: 'NIM_AMOUNT_INVALID',
+  AMOUNT_TOO_LARGE: 'NIM_AMOUNT_TOO_LARGE',
+  TRANSACTION_FAILED:
+    'NIMIQ_TRANSACTION_FAILED',
+} as const
+
+function createPaymentError(
+  code: string,
+): Error & { code: string } {
+  const error = new Error(code) as Error & {
+    code: string
+  }
+
+  error.code = code
+
+  return error
+}
+
 function nimToLuna(
   nim: number,
 ): number {
@@ -9,8 +35,8 @@ function nimToLuna(
     !Number.isFinite(nim) ||
     nim <= 0
   ) {
-    throw new Error(
-      'NIM amount must be greater than zero.',
+    throw createPaymentError(
+      PAYMENT_ERROR_CODES.AMOUNT_INVALID,
     )
   }
 
@@ -22,8 +48,8 @@ function nimToLuna(
   if (
     !Number.isSafeInteger(luna)
   ) {
-    throw new Error(
-      'NIM amount is too large.',
+    throw createPaymentError(
+      PAYMENT_ERROR_CODES.AMOUNT_TOO_LARGE,
     )
   }
 
@@ -51,8 +77,8 @@ function formatUserFriendlyAddress(
       .startsWith('nq') ||
     compactAddress.length !== 36
   ) {
-    throw new Error(
-      'The Circle recipient is not a valid Nimiq address.',
+    throw createPaymentError(
+      PAYMENT_ERROR_CODES.INVALID_RECIPIENT_FORMAT,
     )
   }
 
@@ -62,8 +88,8 @@ function formatUserFriendlyAddress(
     )
 
   if (!groups) {
-    throw new Error(
-      'The Circle recipient is not a valid Nimiq address.',
+    throw createPaymentError(
+      PAYMENT_ERROR_CODES.INVALID_RECIPIENT_FORMAT,
     )
   }
 
@@ -92,8 +118,8 @@ export async function sendCircleContribution({
     )
 
   if (!normalizedExpectedSender) {
-    throw new Error(
-      'No Nimiq account is connected.',
+    throw createPaymentError(
+      PAYMENT_ERROR_CODES.NO_ACCOUNT,
     )
   }
 
@@ -103,8 +129,8 @@ export async function sendCircleContribution({
     )
 
   if (!normalizedRecipient) {
-    throw new Error(
-      'The Circle has an invalid recipient address.',
+    throw createPaymentError(
+      PAYMENT_ERROR_CODES.INVALID_RECIPIENT,
     )
   }
 
@@ -113,8 +139,8 @@ export async function sendCircleContribution({
       .toLowerCase()
       .startsWith('nq')
   ) {
-    throw new Error(
-      'The Circle recipient is not a valid Nimiq address.',
+    throw createPaymentError(
+      PAYMENT_ERROR_CODES.INVALID_RECIPIENT_FORMAT,
     )
   }
 
@@ -127,8 +153,8 @@ export async function sendCircleContribution({
     circleId.trim()
 
   if (!normalizedCircleId) {
-    throw new Error(
-      'The Circle ID is missing.',
+    throw createPaymentError(
+      PAYMENT_ERROR_CODES.MISSING_CIRCLE_ID,
     )
   }
 
@@ -136,8 +162,8 @@ export async function sendCircleContribution({
     await nimiq.isConsensusEstablished()
 
   if (!consensusEstablished) {
-    throw new Error(
-      'Nimiq consensus is not established yet. Please wait for Nimiq Pay to finish syncing and try again.',
+    throw createPaymentError(
+      PAYMENT_ERROR_CODES.CONSENSUS_NOT_ESTABLISHED,
     )
   }
 
@@ -168,11 +194,16 @@ export async function sendCircleContribution({
 
   if (typeof result !== 'string') {
     const providerError =
-      result?.error?.message ||
-      'Nimiq Pay could not send the transaction.'
+      result?.error?.message
 
-    throw new Error(
-      providerError,
+    if (providerError) {
+      throw new Error(
+        providerError,
+      )
+    }
+
+    throw createPaymentError(
+      PAYMENT_ERROR_CODES.TRANSACTION_FAILED,
     )
   }
 
