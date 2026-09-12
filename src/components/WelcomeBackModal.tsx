@@ -1,3 +1,4 @@
+import nimCircleLogo from '../assets/nimcircle-logo.png'
 import type { User } from '../types/user'
 
 interface WelcomeBackModalProps {
@@ -12,8 +13,23 @@ export default function WelcomeBackModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#162018]/40 px-5 backdrop-blur-sm">
       <div className="w-full max-w-sm rounded-4xl bg-white p-7 shadow-2xl">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#c7f36b] text-xl font-bold text-[#162018]">
-          N
+        {/* NimCircle logo */}
+        <div className="relative mx-auto flex h-16 w-16 items-center justify-center">
+          {/* Soft ambient glow */}
+          <div className="absolute h-12 w-12 rounded-full bg-[#c7f36b]/30 blur-xl" />
+
+          {/* Small orbit particles */}
+          <span className="absolute left-1 top-3 h-1 w-1 rounded-full bg-[#c7f36b]" />
+
+          <span className="absolute right-1 top-2 h-1.5 w-1.5 rounded-full bg-[#c7f36b]/70" />
+
+          <span className="absolute bottom-2 left-2 h-1 w-1 rounded-full bg-[#162018]/20" />
+
+          <img
+            src={nimCircleLogo}
+            alt="NimCircle"
+            className="relative z-10 h-12 w-12 object-contain"
+          />
         </div>
 
         <div className="mt-6 text-center">
@@ -26,7 +42,7 @@ export default function WelcomeBackModal({
           </h2>
 
           <p className="mt-3 text-sm leading-6 text-black/50">
-            Your wallet and profile are ready. Let's get back to
+            Your wallet and profile are ready. Let&apos;s get back to
             your circles.
           </p>
         </div>

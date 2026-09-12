@@ -1,3 +1,5 @@
+import nimCircleLogo from '../assets/nimcircle-logo.png'
+
 interface AppHeaderProps {
   address: string
   onHome: () => void
@@ -23,9 +25,22 @@ export default function AppHeader({
           onClick={onHome}
           className="flex min-h-11 items-center gap-3"
         >
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#c7f36b] text-sm font-bold text-[#162018]">
-            N
-          </span>
+          {/* NimCircle logo */}
+          <div className="relative flex h-11 w-11 items-center justify-center">
+            {/* Subtle glow */}
+            <div className="absolute h-8 w-8 rounded-full bg-[#c7f36b]/20 blur-lg" />
+
+            {/* Small orbiting dots */}
+            <span className="absolute left-1 top-2 h-1 w-1 rounded-full bg-[#c7f36b]" />
+            <span className="absolute right-1 top-1.5 h-1.5 w-1.5 rounded-full bg-[#c7f36b]/70" />
+            <span className="absolute bottom-1.5 right-2 h-1 w-1 rounded-full bg-[#162018]/25" />
+
+            <img
+              src={nimCircleLogo}
+              alt="NimCircle"
+              className="relative z-10 h-8 w-8 object-contain"
+            />
+          </div>
 
           <span className="text-base font-bold tracking-tight text-[#162018]">
             NimCircle

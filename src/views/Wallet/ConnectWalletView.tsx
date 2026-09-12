@@ -1,4 +1,5 @@
 import DiagnosticRow from '../../components/DiagnosticRow'
+import nimCircleLogo from '../../assets/nimcircle-logo.png'
 
 interface ConnectWalletViewProps {
   onConnect: () => void
@@ -17,8 +18,22 @@ export default function ConnectWalletView({
     <main className="min-h-screen bg-[#f7f8f5] px-5 py-8 text-[#162018]">
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-md flex-col justify-center">
         <div className="text-center">
-          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-[#c7f36b] text-3xl font-bold">
-            N
+          <div className="relative mx-auto flex h-28 w-28 items-center justify-center">
+            {/* Ambient glow */}
+            <div className="absolute h-20 w-20 rounded-full bg-[#c7f36b]/25 blur-2xl" />
+          
+            {/* Floating particles */}
+            <span className="absolute left-1 top-7 h-1.5 w-1.5 rounded-full bg-[#c7f36b]" />
+            <span className="absolute right-2 top-4 h-2 w-2 rounded-full bg-[#c7f36b]/70" />
+            <span className="absolute bottom-5 left-3 h-1 w-1 rounded-full bg-[#162018]/25" />
+            <span className="absolute bottom-2 right-6 h-1.5 w-1.5 rounded-full bg-[#c7f36b]" />
+          
+            {/* NimCircle logo */}
+            <img
+              src={nimCircleLogo}
+              alt="NimCircle"
+              className="relative z-10 h-20 w-20 object-contain"
+            />
           </div>
 
           <p className="mt-7 text-sm font-semibold uppercase tracking-[0.14em] text-[#607060]">

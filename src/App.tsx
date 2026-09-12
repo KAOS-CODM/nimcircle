@@ -18,7 +18,7 @@ import ProfileView from './views/Profile/ProfileView'
 import { useWallet } from './hooks/useWallet'
 import { useCircles } from './hooks/useCircles'
 import {
-  getSession,
+  //getSession,
   saveSession,
 } from './lib/userStorage'
 import {
@@ -67,6 +67,9 @@ function ProfileGate({
   const [showWelcome, setShowWelcome] =
     useState(false)
 
+  const [justCreatedProfile, setJustCreatedProfile] =
+    useState(false)
+
   useEffect(() => {
     let cancelled = false
 
@@ -78,8 +81,7 @@ function ProfileGate({
         /*
          * The backend is the source of truth.
          *
-         * We use the connected Nimiq wallet address
-         * to determine whether this wallet already
+         * If this request succeeds, the wallet already
          * has a NimCircle profile.
          */
         const existingUser =
@@ -92,22 +94,18 @@ function ProfileGate({
         setUser(existingUser)
 
         /*
-         * Keep a local session so we can identify
-         * returning users in the UI.
+         * Keep the local session synchronized with
+         * the backend profile.
          */
-        const previousSession =
-          getSession()
-
-        const hasMatchingSession =
-          Boolean(previousSession) &&
-          previousSession?.walletAddress.toLowerCase() ===
-            address.toLowerCase()
-
         saveSession(existingUser)
 
-        setShowWelcome(
-          hasMatchingSession,
-        )
+        /*
+         * Existing profile + not just created =
+         * returning user.
+         */
+        if (!justCreatedProfile) {
+          setShowWelcome(true)
+        }
       } catch (requestError) {
         if (cancelled) {
           return
@@ -119,11 +117,7 @@ function ProfileGate({
             : String(requestError)
 
         /*
-         * A 404 means this wallet does not
-         * have a NimCircle profile yet.
-         *
-         * That is an expected onboarding state,
-         * not an application error.
+         * No profile yet means this is a new user.
          */
         if (
           message === 'User not found'
@@ -159,8 +153,7 @@ function ProfileGate({
 
     try {
       /*
-       * The username and display name are now
-       * explicitly provided by the user.
+       * Create the new profile in the backend.
        */
       const newUser =
         await apiCreateUser({
@@ -174,9 +167,22 @@ function ProfileGate({
             data.displayName.trim(),
         })
 
-      saveSession(newUser)
-      setUser(newUser)
+      /*
+       * This profile was just created, so the
+       * Welcome Back modal must not appear.
+       */
+      setJustCreatedProfile(true)
       setShowWelcome(false)
+
+      /*
+       * Save the authenticated session.
+       */
+      saveSession(newUser)
+
+      /*
+       * Enter the app immediately.
+       */
+      setUser(newUser)
     } catch (requestError) {
       const message =
         requestError instanceof Error
@@ -190,9 +196,7 @@ function ProfileGate({
   }
 
   if (loading) {
-    return (
-      <WalletRestoringView />
-    )
+    return <WalletRestoringView />
   }
 
   if (error) {
@@ -221,6 +225,10 @@ function ProfileGate({
     )
   }
 
+  /*
+   * No backend profile means this is a first-time
+   * NimCircle user.
+   */
   if (!user) {
     return (
       <ProfileSetup
