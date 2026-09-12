@@ -417,7 +417,7 @@ export default function CircleView({
   }
 
   async function handleContributionSuccess() {
-    setShowContributeModal(false)
+    //setShowContributeModal(false)
 
     await loadCircle()
   }

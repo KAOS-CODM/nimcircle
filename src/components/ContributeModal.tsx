@@ -17,7 +17,100 @@ interface ContributeModalProps {
   onSuccess: () => void
 }
 
-function getErrorMessage(error: unknown): string {
+function getErrorMessage(
+  error: unknown,
+): string {
+  if (
+    error &&
+    typeof error === 'object'
+  ) {
+    const errorObject = error as {
+      code?: number | string
+      message?: string
+      type?: string
+      error?: {
+        code?: number | string
+        message?: string
+        type?: string
+      }
+    }
+
+    const code =
+      errorObject.code ??
+      errorObject.error?.code
+
+    const message =
+      errorObject.message ??
+      errorObject.error?.message ??
+      ''
+
+    const normalizedMessage =
+      message.toLowerCase()
+
+    if (
+      code === 4001 ||
+      code === '4001'
+    ) {
+      return 'You cancelled the transaction.'
+    }
+
+    if (
+      normalizedMessage.includes(
+        'user rejected',
+      ) ||
+      normalizedMessage.includes(
+        'user denied',
+      ) ||
+      normalizedMessage.includes(
+        'user cancelled',
+      ) ||
+      normalizedMessage.includes(
+        'user canceled',
+      ) ||
+      normalizedMessage.includes(
+        'request rejected',
+      ) ||
+      normalizedMessage.includes(
+        'request denied',
+      )
+    ) {
+      return 'You cancelled the transaction.'
+    }
+
+    if (
+      normalizedMessage.includes(
+        'failed to fetch',
+      ) ||
+      normalizedMessage.includes(
+        'network error',
+      ) ||
+      normalizedMessage.includes(
+        'network request failed',
+      ) ||
+      normalizedMessage.includes(
+        'fetch failed',
+      ) ||
+      normalizedMessage.includes(
+        'connection refused',
+      ) ||
+      normalizedMessage.includes(
+        'failed to connect',
+      ) ||
+      normalizedMessage.includes(
+        'econnrefused',
+      ) ||
+      normalizedMessage.includes(
+        'enotfound',
+      )
+    ) {
+      return 'We could not reach the NimCircle server. Please check your connection and try again.'
+    }
+
+    if (message) {
+      return message
+    }
+  }
+
   if (error instanceof Error) {
     return error.message
   }
@@ -26,32 +119,7 @@ function getErrorMessage(error: unknown): string {
     return error
   }
 
-  if (error && typeof error === 'object') {
-    const errorObject = error as {
-      error?: {
-        type?: string
-        message?: string
-      }
-      message?: string
-      type?: string
-    }
-
-    if (errorObject.error?.message) {
-      return errorObject.error.message
-    }
-
-    if (errorObject.message) {
-      return errorObject.message
-    }
-
-    try {
-      return JSON.stringify(error)
-    } catch {
-      return 'Something went wrong while sending the contribution.'
-    }
-  }
-
-  return 'Something went wrong while sending the contribution.'
+  return 'Something went wrong while processing the contribution. Please try again.'
 }
 
 function isTransactionNotFoundError(
@@ -61,7 +129,9 @@ function isTransactionNotFoundError(
     getErrorMessage(error).toLowerCase()
 
   return (
-    message.includes('transaction not found') ||
+    message.includes(
+      'transaction not found',
+    ) ||
     message.includes('not found')
   )
 }
@@ -135,16 +205,24 @@ export default function ContributeModal({
         ? fixedAmountNim.toString()
         : '',
     )
+
   const isFixedAmount =
     fixedAmountNim !== undefined
+
   const [isSubmitting, setIsSubmitting] =
     useState(false)
+
   const [error, setError] =
     useState<string | null>(null)
+
   const [success, setSuccess] =
     useState(false)
+
   const [transactionHash, setTransactionHash] =
     useState<string | null>(null)
+
+  const [paymentSent, setPaymentSent] =
+    useState(false)
 
   const parsedAmount = Number(amount)
 
@@ -155,6 +233,7 @@ export default function ContributeModal({
 
   async function handleContribute() {
     setError(null)
+    setPaymentSent(false)
 
     if (
       !Number.isFinite(parsedAmount) ||
@@ -223,14 +302,6 @@ export default function ContributeModal({
        * Step 1:
        * Send the actual NIM payment through
        * the shared Nimiq payment helper.
-       *
-       * The helper checks:
-       * - connected account
-       * - expected contributor wallet
-       * - Nimiq consensus
-       * - transaction recipient
-       * - transaction amount
-       * - Circle memo
        */
       console.log(
         '[NimCircle] Sending Circle contribution...',
@@ -256,6 +327,7 @@ export default function ContributeModal({
         payment.transactionHash
 
       setTransactionHash(hash)
+      setPaymentSent(true)
 
       /*
        * Step 2:
@@ -278,10 +350,6 @@ export default function ContributeModal({
        * Step 3:
        * Ask the backend to verify the transaction
        * against the Nimiq blockchain.
-       *
-       * A newly submitted transaction may take a
-       * moment before the RPC can find it, so we
-       * retry only when the transaction is not found.
        */
       console.log(
         '[NimCircle] Waiting for blockchain confirmation...',
@@ -303,6 +371,14 @@ export default function ContributeModal({
 
       setSuccess(true)
 
+      /*
+       * Refresh Circle data in the parent,
+       * but do not close this modal.
+       *
+       * The success screen owns the final
+       * confirmation and the user closes it
+       * with the Done button.
+       */
       onSuccess()
     } catch (requestError) {
       console.error(
@@ -310,11 +386,18 @@ export default function ContributeModal({
         requestError,
       )
 
-      setError(
+      const message =
         getErrorMessage(
           requestError,
-        ),
-      )
+        )
+
+      if (paymentSent) {
+        setError(
+          `Your transaction was sent, but NimCircle could not finish processing it. Your funds may already have been transferred. Transaction: ${transactionHash ?? 'unknown'}`,
+        )
+      } else {
+        setError(message)
+      }
     } finally {
       setIsSubmitting(false)
     }
@@ -399,7 +482,7 @@ export default function ContributeModal({
               ? 'Creator commitment'
               : 'Amount'}
           </label>
-        
+
           <div className="relative mt-2">
             <input
               id="contribution-amount"
@@ -413,11 +496,11 @@ export default function ContributeModal({
                 if (isFixedAmount) {
                   return
                 }
-        
+
                 setAmount(
                   event.target.value,
                 )
-        
+
                 setError(null)
               }}
               readOnly={isFixedAmount}
@@ -426,22 +509,22 @@ export default function ContributeModal({
               className={`min-h-14 w-full rounded-2xl border border-black/10 bg-[#f7f8f5] px-4 pr-16 text-xl font-bold text-[#162018] outline-none focus:border-[#162018]/30 ${
                 isFixedAmount
                   ? 'cursor-default'
-                : ''
+                  : ''
               }`}
             />
-        
+
             <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-[#607060]">
               NIM
             </span>
           </div>
-        
+
           <div className="mt-2 flex items-center justify-between text-xs text-[#607060]">
             <span>
               {isFixedAmount
                 ? 'Fixed commitment'
                 : 'Remaining'}
             </span>
-        
+
             <span className="font-semibold">
               {isFixedAmount
                 ? `${fixedAmountNim?.toLocaleString()} NIM`

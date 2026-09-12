@@ -29,8 +29,36 @@ function getErrorMessage(error: unknown) {
   }
 
   if (typeof error === 'object' && error !== null) {
+    const providerError = error as {
+      code?: number | string
+      message?: string
+      data?: {
+        code?: number | string
+        message?: string
+      }
+    }
+
+    const code =
+      providerError.code ??
+      providerError.data?.code
+
+    const message =
+      providerError.message ??
+      providerError.data?.message
+
+    if (
+      code === 4001 ||
+      code === '4001'
+    ) {
+      return 'You cancelled the wallet connection request.'
+    }
+
+    if (message) {
+      return message
+    }
+
     try {
-      return JSON.stringify(error, null, 2)
+      return JSON.stringify(error)
     } catch {
       return String(error)
     }
@@ -59,7 +87,7 @@ export function useWallet() {
     if (requestPromiseRef.current) {
       return requestPromiseRef.current
     }
-  
+
     const promise = (async () => {
       try {
         setWallet((current) => ({
@@ -69,35 +97,38 @@ export function useWallet() {
           debug: {
             ...current.debug,
             stage: 'requesting-account',
-            status: 'Requesting your NIM account from Nimiq Pay...',
+            status:
+              'Requesting your NIM account from Nimiq Pay...',
           },
         }))
-  
+
         const nimiq = await getNimiq()
-  
+
         setWallet((current) => ({
           ...current,
           debug: {
             ...current.debug,
             providerInitialized: true,
             stage: 'provider-ready',
-            status: 'Nimiq provider initialized successfully.',
+            status:
+              'Nimiq provider initialized successfully.',
           },
         }))
-  
+
         const accounts = await nimiq.listAccounts()
-  
+
         const safeAccounts = Array.isArray(accounts)
           ? accounts
           : []
-  
+
         const address = safeAccounts[0] ?? null
-  
+
         if (!address) {
           setWallet({
             address: null,
             loading: false,
-            error: 'Nimiq Pay returned zero NIM accounts.',
+            error:
+              'Nimiq Pay returned zero NIM accounts.',
             debug: {
               providerInitialized: true,
               accounts: safeAccounts,
@@ -107,10 +138,10 @@ export function useWallet() {
                 'Provider initialized, but no NIM account was returned.',
             },
           })
-  
+
           return
         }
-  
+
         setWallet({
           address,
           loading: false,
@@ -120,12 +151,18 @@ export function useWallet() {
             accounts: safeAccounts,
             accountCount: safeAccounts.length,
             stage: 'account-returned',
-            status: 'NIM account returned successfully.',
+            status:
+              'NIM account returned successfully.',
           },
         })
       } catch (error) {
         const message = getErrorMessage(error)
-  
+
+        console.error(
+          'Nimiq wallet connection request failed:',
+          error,
+        )
+
         setWallet((current) => ({
           address: null,
           loading: false,
@@ -141,9 +178,9 @@ export function useWallet() {
         requestPromiseRef.current = null
       }
     })()
-  
+
     requestPromiseRef.current = promise
-  
+
     return promise
   }, [])
 
