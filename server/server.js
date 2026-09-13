@@ -1,7 +1,9 @@
 require('dotenv').config()
 
+const rateLimit = require('express-rate-limit')
 const express = require('express')
 const cors = require('cors')
+const helmet = require('helmet')
 
 const connectDatabase = require('./db')
 
@@ -15,16 +17,92 @@ const app = express()
 const PORT =
   process.env.PORT || 9000
 
+/*
+ * API rate limiter
+ *
+ * Limits each client to 300 requests
+ * within a 15-minute window.
+ */
+const apiLimiter =
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 300,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+      error:
+        'Too many requests. Please try again later.',
+    },
+  })
+
+/*
+ * Security headers
+ */
+app.use(
+  helmet(),
+)
+
+/*
+ * CORS
+ *
+ * Only allow the configured frontend origin
+ * and local development origins.
+ */
+const allowedOrigins = (
+  process.env.FRONTEND_URLS || ''
+)
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean)
+
 app.use(
   cors({
-    origin: true,
+    origin(origin, callback) {
+      /*
+       * Requests without an Origin header can still be used
+       * by server-to-server tools and health checks.
+       */
+      if (!origin) {
+        return callback(null, true)
+      }
+
+      if (
+        allowedOrigins.includes(origin)
+      ) {
+        return callback(null, true)
+      }
+
+      return callback(null, false)
+    },
+
+    methods: [
+      'GET',
+      'POST',
+      'PATCH',
+      'OPTIONS',
+    ],
+
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+    ],
   }),
 )
 
-app.use(express.json())
+/*
+ * Limit incoming JSON payloads.
+ */
+app.use(
+  express.json({
+    limit: '100kb',
+  }),
+)
 
 /*
  * Health check
+ *
+ * Kept outside the rate limiter so
+ * monitoring can always reach it.
  */
 app.get('/api/health', (req, res) => {
   res.json({
@@ -33,6 +111,16 @@ app.get('/api/health', (req, res) => {
     status: 'healthy',
   })
 })
+
+/*
+ * Rate-limit API routes.
+ *
+ * Health check remains unrestricted.
+ */
+app.use(
+  '/api',
+  apiLimiter,
+)
 
 /*
  * API routes
@@ -54,7 +142,7 @@ app.use(
 
 app.use(
   '/api/config',
-  configRoutes
+  configRoutes,
 )
 
 /*
@@ -78,6 +166,11 @@ app.use(
       error,
     )
 
+    /*
+     * Don't expose internal error details
+     * to clients.
+     */
+
     res.status(500).json({
       error:
         'Internal server error',
@@ -85,6 +178,9 @@ app.use(
   },
 )
 
+/*
+ * Start server
+ */
 async function startServer() {
   const connected =
     await connectDatabase()
