@@ -4,7 +4,7 @@
 
 NimCircle is a Nimiq Pay Mini App for creating and managing shared savings goals with NIM.
 
-A creator sets a goal, target amount, deadline, and recipient wallet. The Circle can then be shared with other people, who contribute NIM through Nimiq Pay. NimCircle verifies the resulting blockchain transactions before counting them toward the Circle's progress.
+A creator sets a goal, target amount, deadline, goal owner, and creator commitment. The Circle can then be shared with other people, who contribute NIM through Nimiq Pay. NimCircle verifies the resulting blockchain transactions before counting them toward the Circle's progress.
 
 Instead of coordinating shared savings through group chats, spreadsheets, screenshots, or manual calculations, NimCircle gives everyone a single Circle with a clear target, contribution history, deadline, status, and verifiable on-chain activity.
 
@@ -45,9 +45,9 @@ Instead of coordinating shared savings through group chats, spreadsheets, screen
 
 NimCircle is a shared savings and goal-tracking application built around NIM.
 
-A **Circle** represents a shared financial goal. A creator defines what the group is saving for, sets a target amount and deadline, and specifies the wallet that should receive the contributions.
+A **Circle** represents a shared financial goal. A creator defines what the group is saving for, sets a target amount and deadline, specifies the wallet that should receive contributions, and records a creator commitment.
 
-Other participants can then find the Circle, open it, and contribute NIM.
+Other participants can find the Circle, open it, and contribute NIM.
 
 Every contribution is associated with a Circle and a blockchain transaction hash. NimCircle's backend independently verifies the transaction before treating the contribution as confirmed.
 
@@ -108,6 +108,7 @@ A Circle contains:
 * Deadline
 * Creator
 * Goal owner
+* Creator commitment
 * Contribution history
 * Contributor information
 * Current status
@@ -146,7 +147,9 @@ The creator provides information such as:
 
 Amounts are represented internally in **Luna**, Nimiq's smallest unit.
 
-NimCircle validates the Circle data before sending it to the backend.
+NimCircle validates Circle data before sending it to the backend.
+
+The backend also validates important Circle rules before creating the Circle.
 
 ---
 
@@ -158,7 +161,7 @@ The creator can copy the Circle ID and share it with other participants.
 
 A participant can enter the ID through NimCircle's **Find a Circle** flow to retrieve the Circle from the backend.
 
-This avoids requiring contributors to manually search through existing Circles or know the creator's wallet address.
+This avoids requiring contributors to search through existing Circles or know the creator's wallet address.
 
 ---
 
@@ -239,9 +242,13 @@ Contributors can use the **Find a Circle** flow to open a specific Circle.
 
 A Circle distinguishes between its creator and the wallet designated to receive the goal's contributions.
 
+## Creator commitment
+
+Creators specify a commitment amount when creating a Circle. This commitment is stored as part of the Circle configuration.
+
 ## Contribution history
 
-Confirmed contributions are associated with their contributor, amount, Circle, and transaction hash.
+Confirmed contributions are associated with their contributor, amount, Circle, recipient wallet, transaction hash, and transaction memo.
 
 ## Progress tracking
 
@@ -372,7 +379,7 @@ init({ timeout: 10_000 })
 
 The provider is used for wallet access, consensus checks, and NIM transaction requests.
 
-### Provider flow
+## Provider flow
 
 ```text
 NimCircle
@@ -513,7 +520,7 @@ The server remains the authority for these checks.
 
 NimCircle's backend determines which Nimiq network the application is configured to use.
 
-The backend currently supports:
+The backend supports:
 
 ```text
 TestAlbatross
@@ -544,11 +551,13 @@ or:
 }
 ```
 
-The application does not pretend that the Mini App SDK can directly identify the user's Testnet/Mainnet selection. Instead, NimCircle communicates which network the application is currently configured for.
+The application does not pretend that the Mini App SDK can directly identify the user's Testnet/Mainnet selection.
 
-## Testnet user testing
+Instead, NimCircle communicates which network the application is currently configured for and provides contextual guidance to the user.
 
-During the current user-testing phase, NimCircle is configured for **Nimiq Testnet**.
+## Current Testnet configuration
+
+The current competition build is configured for **Nimiq Testnet / TestAlbatross**.
 
 Users who need to switch Nimiq Pay to Testnet can:
 
@@ -561,9 +570,7 @@ Users who need to switch Nimiq Pay to Testnet can:
 
 Free test NIM can be obtained through the Nimiq Testnet environment for testing purposes.
 
-When NimCircle is configured for Mainnet, the same process can be used to change the network from **Default** to **Mainnet**.
-
-The application displays contextual network guidance so users know which network NimCircle currently expects.
+When NimCircle is configured for Mainnet, the same provider settings can be changed from **Default** to **Mainnet**.
 
 ---
 
@@ -580,7 +587,7 @@ NimCircle uses a React frontend, an Express API, MongoDB, and Nimiq's transactio
                    │
                    ▼
 ┌──────────────────────────────────────┐
-│         React + TypeScript            │
+│         React + TypeScript           │
 │                                      │
 │  App                                 │
 │  Circle views                        │
@@ -600,7 +607,8 @@ NimCircle uses a React frontend, an Express API, MongoDB, and Nimiq's transactio
 │  Contributions                       │
 │  Transaction verification            │
 │  Circle lifecycle                    │
-│  Network configuration                │
+│  Network configuration               │
+│  API security controls               │
 └──────────────────┬───────────────────┘
                    │
                    ▼
@@ -655,7 +663,9 @@ targetAmount
 deadline
 creatorWallet
 creatorUserId
-recipientWallet
+goalOwnerWallet
+goalOwnerUserId
+creatorCommitment
 status
 completedAt
 cancelledAt
@@ -675,13 +685,15 @@ Important fields include:
 circleId
 contributorWallet
 contributorUserId
+recipientWallet
 amount
 transactionHash
+memo
 status
 confirmedAt
 ```
 
-Transaction hashes are uniquely indexed to prevent the same blockchain transaction from being recorded multiple times.
+Contribution transaction hashes are uniquely indexed to prevent the same blockchain transaction from being recorded multiple times.
 
 ---
 
@@ -748,6 +760,26 @@ Wallet addresses are normalized before comparison and storage to avoid inconsist
 
 ---
 
+## API security controls
+
+The Express API includes several baseline security controls:
+
+* Helmet security headers
+* Configurable CORS allowlisting
+* JSON request body size limited to 100 KB
+* API rate limiting
+* Standard rate-limit response headers
+* Restricted HTTP methods and request headers
+* Generic internal-server error responses
+
+The API currently limits general API traffic to **300 requests per client within a 15-minute window**.
+
+The health endpoint remains outside the API rate limiter so that deployment and monitoring systems can check service availability.
+
+CORS is configured through the backend environment rather than allowing arbitrary browser origins.
+
+---
+
 ## Transaction failure handling
 
 The contribution flow distinguishes between a transaction that was never submitted and a transaction that was submitted but could not yet be confirmed by the backend.
@@ -791,8 +823,11 @@ The intended experience is not a desktop website pretending to be a wallet appli
 
 * Node.js
 * Express
-* MongoDB
 * Mongoose
+* MongoDB
+* Helmet
+* Express Rate Limit
+* CORS
 
 ## Blockchain / Wallet
 
@@ -863,8 +898,7 @@ nimcircle/
 │   ├── lib/
 │   │   ├── api.ts
 │   │   ├── nimiq.ts
-│   │   ├── nimiqPayment.ts
-│   │   └── apiErrors.ts
+│   │   └── nimiqPayment.ts
 │   │
 │   ├── views/
 │   │   ├── CircleView.tsx
@@ -876,7 +910,6 @@ nimcircle/
 │   │
 │   └── App.tsx
 │
-├── tailwind-workspace/
 ├── package.json
 ├── vite.config.ts
 └── README.md
@@ -911,19 +944,13 @@ cd nimcircle
 
 ## Install dependencies
 
-Install the frontend dependencies:
+Install the project dependencies from the repository root:
 
 ```bash
 npm install
 ```
 
-The backend has its own package configuration under:
-
-```text
-server/package.json
-```
-
-Install the backend dependencies according to that package configuration.
+The frontend and backend use the repository's root package configuration.
 
 ---
 
@@ -933,17 +960,37 @@ Install the backend dependencies according to that package configuration.
 npm run dev
 ```
 
-The Vite development server is configured for local-network access so the application can be opened from another device on the same network.
+For testing from another device on the same local network:
+
+```bash
+npm run dev -- --host
+```
+
+Vite will expose a local-network address such as:
+
+```text
+http://192.168.x.x:5174/
+```
+
+This allows NimCircle to be opened from a phone connected to the same Wi-Fi network.
 
 ---
 
 ## Start the backend
 
-From the server environment:
+For normal execution:
 
 ```bash
-node server/server.js
+npm run server
 ```
+
+For development with automatic restart:
+
+```bash
+npm run server:dev
+```
+
+The API defaults to port `9000` when no `PORT` environment variable is provided.
 
 The API exposes a health endpoint:
 
@@ -973,18 +1020,37 @@ Example:
 
 ```env
 VITE_API_BASE_URL=https://nimcircle-api.onrender.com/api
-VITE_NIMCIRCLE_URL=nimcircle.vercel.app
+VITE_NIMCIRCLE_URL=https://nimcircle.vercel.app
 ```
+
+For local development, the API base URL can point to the local backend:
+
+```env
+VITE_API_BASE_URL=http://localhost:9000/api
+```
+
+When the frontend is accessed from another device on the local network, the application's API fallback can use the same host on port `9000`.
+
+---
 
 ## Backend
 
 The backend uses environment variables for configuration such as:
 
 ```env
-PORT=3000
+PORT=9000
 MONGODB_URI=<your-mongodb-connection-string>
 NIMIQ_NETWORK=TestAlbatross
+FRONTEND_URLS=http://localhost:5174,http://192.168.0.200:5174
 ```
+
+For production, the CORS configuration should contain the deployed frontend origin:
+
+```env
+FRONTEND_URLS=https://nimcircle.vercel.app
+```
+
+Multiple origins can be provided as a comma-separated list.
 
 Supported network values include:
 
@@ -1019,6 +1085,8 @@ The following flow can be tested:
 * Deadline management
 * Circle cancellation
 * Error handling
+* Network guidance
+* Multiple language interfaces
 
 ## Recommended test flow
 
@@ -1036,6 +1104,7 @@ The following flow can be tested:
 12. Confirm that the contribution appears in the Circle.
 13. Confirm that the progress updates.
 14. Test relevant Circle lifecycle actions.
+15. Test the application in the available interface languages.
 
 ---
 
@@ -1053,7 +1122,7 @@ https://nimcircle.vercel.app
 
 The frontend is configured to work as a hosted Mini App and to support Circle-related navigation without relying on a traditional multi-page server.
 
-When the connected GitHub repository receives a new deployment-triggering push, Vercel can build and deploy the updated frontend to the production URL.
+When the connected GitHub repository receives a deployment-triggering push, Vercel can build and deploy the updated frontend to the production URL.
 
 ---
 
@@ -1070,10 +1139,16 @@ https://nimcircle-api.onrender.com
 The Render service runs:
 
 ```bash
-node server/server.js
+npm run server
 ```
 
-The production port is provided through the Render environment rather than relying on a hardcoded production port.
+The production port is provided through the Render environment.
+
+The production backend should configure CORS to allow the deployed frontend origin through:
+
+```env
+FRONTEND_URLS=https://nimcircle.vercel.app
+```
 
 ---
 
@@ -1081,7 +1156,7 @@ The production port is provided through the Render environment rather than relyi
 
 NimCircle's core application flow is implemented and has been exercised in the Nimiq Pay environment.
 
-### Current core flow
+## Current core flow
 
 ```text
 Connect wallet
@@ -1103,7 +1178,7 @@ Update Circle progress
 Complete goal
 ```
 
-### Current implementation areas
+## Current implementation areas
 
 | Area                             | Status   |
 | -------------------------------- | -------- |
@@ -1125,6 +1200,7 @@ Complete goal
 | Testnet network configuration    | Complete |
 | Network switching guidance       | Complete |
 | NimCircle branding/app icon      | Complete |
+| API security controls            | Complete |
 | Vercel frontend deployment       | Complete |
 | Render backend deployment        | Complete |
 
