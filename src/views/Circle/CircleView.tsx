@@ -13,6 +13,7 @@ import {
   apiCancelCircle,
   apiExtendCircleDeadline,
   apiGetCircle,
+  getLocalizedApiError,
 } from '../../lib/api'
 
 import { useLanguage } from '../../i18n/useLanguage'
@@ -435,17 +436,17 @@ export default function CircleView({
             [],
         )
       } catch (requestError) {
-        const message =
-          requestError instanceof Error
-            ? requestError.message
-            : String(requestError)
-  
-        setCircleError(message)
+        setCircleError(
+          getLocalizedApiError(
+            requestError,
+            t,
+          ),
+        )
       } finally {
         setRefreshingCircle(false)
       }
     },
-    [circleId],
+    [circleId, t],
   )
   
   useEffect(() => {
@@ -503,58 +504,60 @@ export default function CircleView({
 
   async function handleShare() {
     const miniAppUrl =
-      import.meta.env
-        .VITE_NIMCIRCLE_URL
-
+      import.meta.env.VITE_NIMCIRCLE_URL
+  
     const shareUrl =
       `https://nimpay.app/miniapps/open/${miniAppUrl}/circle/${encodeURIComponent(circleId)}`
-
+  
     try {
+      if (navigator.share) {
+        await navigator.share({
+          title: circle?.name
+            ? `Join ${circle.name}`
+            : 'Join my NimCircle',
+          text:
+            'Open this Circle in NimCircle.',
+          url: shareUrl,
+        })
+  
+        return
+      }
+  
       const textArea =
-        document.createElement(
-          'textarea',
-        )
-
+        document.createElement('textarea')
+  
       textArea.value = shareUrl
-      textArea.style.position =
-        'fixed'
-      textArea.style.left =
-        '-9999px'
+      textArea.style.position = 'fixed'
+      textArea.style.left = '-9999px'
       textArea.style.top = '0'
-
-      document.body.appendChild(
-        textArea,
-      )
-
+  
+      document.body.appendChild(textArea)
+  
       textArea.focus()
       textArea.select()
-
+  
       const copied =
-        document.execCommand(
-          'copy',
-        )
-
-      document.body.removeChild(
-        textArea,
-      )
-
+        document.execCommand('copy')
+  
+      document.body.removeChild(textArea)
+  
       if (!copied) {
         throw new Error(
           'Copy command failed',
         )
       }
-
+  
       setLinkCopied(true)
-
+  
       window.setTimeout(() => {
         setLinkCopied(false)
       }, 2000)
     } catch (error) {
       console.error(
-        'Failed to copy Circle link:',
+        'Failed to share Circle link:',
         error,
       )
-
+  
       window.alert(
         t.circle.unableToCopy,
       )
@@ -823,7 +826,7 @@ export default function CircleView({
           <button
             type="button"
             onClick={() =>
-              void loadCircle(/*true*/)
+              void loadCircle()
             }
             className="mt-4 rounded-xl bg-red-100 px-4 py-2 text-sm font-bold text-red-700"
           >

@@ -2,9 +2,11 @@
 
 > **Shared savings goals powered by NIM.**
 
-NimCircle is a Nimiq Pay Mini App that lets people create shared savings goals, invite others to contribute NIM, and track progress toward a common target.
+NimCircle is a Nimiq Pay Mini App for creating and managing shared savings goals with NIM.
 
-Instead of managing contributions manually across chats, spreadsheets, or separate wallets, NimCircle gives a group a single Circle with a defined goal, target amount, deadline, contributors, and verifiable on-chain contributions.
+A creator sets a goal, target amount, deadline, and recipient wallet. The Circle can then be shared with other people, who contribute NIM through Nimiq Pay. NimCircle verifies the resulting blockchain transactions before counting them toward the Circle's progress.
+
+Instead of coordinating shared savings through group chats, spreadsheets, screenshots, or manual calculations, NimCircle gives everyone a single Circle with a clear target, contribution history, deadline, status, and verifiable on-chain activity.
 
 **Built for the Nimiq Mini Apps Competition · Cycle II**
 
@@ -17,9 +19,11 @@ Instead of managing contributions manually across chats, spreadsheets, or separa
 * [The Solution](#the-solution)
 * [How It Works](#how-it-works)
 * [Core Features](#core-features)
+* [Localization](#localization)
 * [Nimiq Integration](#nimiq-integration)
 * [Transaction Flow](#transaction-flow)
 * [Circle Lifecycle](#circle-lifecycle)
+* [Network Configuration](#network-configuration)
 * [Architecture](#architecture)
 * [Data Model](#data-model)
 * [Security and Reliability](#security-and-reliability)
@@ -28,9 +32,9 @@ Instead of managing contributions manually across chats, spreadsheets, or separa
 * [Project Structure](#project-structure)
 * [Getting Started](#getting-started)
 * [Environment Variables](#environment-variables)
-* [Testing with TestAlbatross](#testing-with-testalbatross)
+* [Testing with Nimiq Testnet](#testing-with-nimiq-testnet)
 * [Deployment](#deployment)
-* [Pre-Ship Checklist](#pre-ship-checklist)
+* [Development Status](#development-status)
 * [Competition Context](#competition-context)
 * [Roadmap](#roadmap)
 * [License](#license)
@@ -41,27 +45,31 @@ Instead of managing contributions manually across chats, spreadsheets, or separa
 
 NimCircle is a shared savings and goal-tracking application built around NIM.
 
-A Circle represents a shared financial goal. A creator defines the goal, sets a target amount and deadline, and specifies the wallet that should receive the contributions. Other participants can then contribute NIM toward that goal.
+A **Circle** represents a shared financial goal. A creator defines what the group is saving for, sets a target amount and deadline, and specifies the wallet that should receive the contributions.
 
-Every contribution is tied to a Circle and recorded with its transaction hash. NimCircle's backend verifies the transaction before treating the contribution as confirmed.
+Other participants can then find the Circle, open it, and contribute NIM.
 
-The result is a simple flow:
+Every contribution is associated with a Circle and a blockchain transaction hash. NimCircle's backend independently verifies the transaction before treating the contribution as confirmed.
+
+The core flow is:
 
 ```text
-Create a goal
+Create a Circle
       ↓
-Share the Circle
+Share the Circle ID
       ↓
-People contribute NIM
+Participants find the Circle
       ↓
-Transactions are verified
+Contribute NIM
+      ↓
+Transaction is verified
       ↓
 Circle progress updates
       ↓
 Goal is completed
 ```
 
-NimCircle is designed specifically for the Nimiq Pay Mini App environment, making NIM-based group saving accessible directly from a Nimiq wallet experience.
+NimCircle is designed specifically for the Nimiq Pay Mini App environment, allowing NIM-based group saving to happen directly inside a wallet experience.
 
 ---
 
@@ -76,36 +84,40 @@ Shared savings are often managed through informal systems:
 * Separate wallet addresses
 * Manually calculated progress
 * Unclear deadlines
-* No central record of who has contributed
+* No central contribution history
 
-These approaches work for very small groups, but they become increasingly difficult to manage as the number of contributors grows.
+These approaches can work for small groups, but they become increasingly difficult to manage as the number of contributors grows.
 
-The core problem is not simply sending money.
+The real problem is not simply sending money.
 
-It is **coordinating a shared financial goal and keeping everyone's contributions understandable and verifiable.**
+It is:
+
+> **Coordinating a shared financial goal while keeping everyone's contributions understandable and verifiable.**
 
 ---
 
 # The Solution
 
-NimCircle turns the shared goal into a structured Circle.
+NimCircle turns a shared financial goal into a structured Circle.
 
 A Circle contains:
 
-* A name
-* A description
-* A target amount
-* A deadline
-* A creator
-* A goal owner
-* A contribution history
-* A current status
-* A calculated progress amount
-* A list of contributors
+* Name
+* Description
+* Target amount
+* Deadline
+* Creator
+* Goal owner
+* Contribution history
+* Contributor information
+* Current status
+* Calculated progress
+* Remaining amount
+* Contributor count
 
-Contributors interact with Nimiq Pay to send NIM, while NimCircle's backend independently verifies the resulting transaction.
+Participants interact with Nimiq Pay to send NIM, while the NimCircle backend independently verifies the resulting blockchain transaction.
 
-This gives participants a single place to answer:
+This gives participants one place to answer:
 
 > **What are we saving for, how much do we need, how much has been contributed, and how close are we?**
 
@@ -117,13 +129,13 @@ This gives participants a single place to answer:
 
 NimCircle initializes the Nimiq Mini App SDK and connects to the Nimiq provider exposed by Nimiq Pay.
 
-The application does not access private keys or wallet internals.
+The application does not request or access private keys, seed phrases, or wallet secrets.
 
 ---
 
 ## 2. Create a Circle
 
-The creator provides:
+The creator provides information such as:
 
 * Circle name
 * Description
@@ -132,23 +144,21 @@ The creator provides:
 * Goal owner
 * Creator commitment
 
-The target amount is represented internally in **Luna**, Nimiq's smallest unit.
+Amounts are represented internally in **Luna**, Nimiq's smallest unit.
 
-NimCircle validates the data before creating the Circle.
+NimCircle validates the Circle data before sending it to the backend.
 
 ---
 
 ## 3. Share the Circle
 
-Each Circle has a shareable deep link.
+Every Circle has a unique Circle ID.
 
-A shared link can open a specific Circle through Nimiq Pay:
+The creator can copy the Circle ID and share it with other participants.
 
-```text
-https://nimpay.app/miniapps/open/<nimcircle-app>/circle/<circleId>
-```
+A participant can enter the ID through NimCircle's **Find a Circle** flow to retrieve the Circle from the backend.
 
-This makes it possible to send a Circle directly to potential contributors.
+This avoids requiring contributors to manually search through existing Circles or know the creator's wallet address.
 
 ---
 
@@ -156,15 +166,15 @@ This makes it possible to send a Circle directly to potential contributors.
 
 A contributor chooses how much NIM to contribute.
 
-NimCircle creates a transaction using the Nimiq provider and presents the transaction through Nimiq Pay's native approval experience.
+NimCircle creates a transaction using the Nimiq provider and passes the request to Nimiq Pay's native transaction approval experience.
 
-The transaction includes a Circle-specific memo:
+Each contribution includes a Circle-specific memo:
 
 ```text
 NC1:<circleId>
 ```
 
-This links the on-chain transaction to the intended NimCircle Circle.
+This connects the blockchain transaction to the intended Circle.
 
 ---
 
@@ -172,17 +182,17 @@ This links the on-chain transaction to the intended NimCircle Circle.
 
 Receiving a transaction hash is not treated as sufficient proof of a contribution.
 
-The backend verifies the transaction and checks relevant details including:
+The backend verifies relevant transaction details including:
 
 * Transaction hash
 * Transaction inclusion
-* Confirmation/execution state
+* Confirmation and execution state
 * Recipient
 * Amount
 * Circle memo
 * Contributor identity
 
-Only after successful verification is the contribution recorded as confirmed.
+Only after successful verification is the contribution marked as confirmed.
 
 ---
 
@@ -190,14 +200,14 @@ Only after successful verification is the contribution recorded as confirmed.
 
 Confirmed contributions are aggregated for the Circle.
 
-The application calculates:
+NimCircle calculates:
 
 * Total amount raised
 * Remaining amount
 * Percentage progress
 * Contributor count
 
-When the confirmed amount reaches the target, the Circle can transition to:
+When the confirmed contribution total reaches the target, the Circle can transition to:
 
 ```text
 COMPLETED
@@ -209,23 +219,29 @@ COMPLETED
 
 ## Shared savings Circles
 
-Create a structured goal that multiple people can contribute toward.
+Create a structured savings goal that multiple people can contribute toward.
 
 ## NIM contributions
 
-Contributors can send native NIM directly through Nimiq Pay.
+Send native NIM directly through Nimiq Pay.
 
 ## On-chain contribution verification
 
-Contributions are independently checked by the backend instead of trusting the frontend transaction response.
+The backend independently verifies blockchain transactions instead of trusting the frontend transaction response.
+
+## Circle ID discovery
+
+Creators can copy a Circle ID and share it with potential contributors.
+
+Contributors can use the **Find a Circle** flow to open a specific Circle.
 
 ## Goal ownership
 
-A Circle can distinguish between its creator and the wallet designated as the goal owner.
+A Circle distinguishes between its creator and the wallet designated to receive the goal's contributions.
 
 ## Contribution history
 
-Confirmed contributions are associated with their contributor and transaction hash.
+Confirmed contributions are associated with their contributor, amount, Circle, and transaction hash.
 
 ## Progress tracking
 
@@ -233,7 +249,7 @@ Each Circle displays its current raised amount, remaining amount, progress perce
 
 ## Circle status management
 
-Circles can become:
+Circles can be:
 
 * Active
 * Completed
@@ -242,9 +258,9 @@ Circles can become:
 
 ## Deadline extension
 
-A creator can extend an active Circle's deadline when contributors need more time to reach the goal.
+Creators can extend the deadline of an active Circle when more time is needed to reach the target.
 
-The new deadline must be later than the existing deadline.
+The backend ensures the new deadline is valid and later than the existing deadline.
 
 Completed, cancelled, and expired Circles cannot be extended.
 
@@ -254,13 +270,9 @@ Only the creator can cancel an active Circle.
 
 Completed and already cancelled Circles cannot be changed back to another status.
 
-## Deep-link sharing
-
-A specific Circle can be shared using a Nimiq Pay Mini App deep link.
-
 ## User profiles
 
-Users have wallet-associated profiles containing information such as:
+Users have wallet-associated profiles containing:
 
 * Username
 * Display name
@@ -269,7 +281,72 @@ Users have wallet-associated profiles containing information such as:
 
 ## Personal Circle views
 
-Users can see Circles they created and Circles they have joined.
+Users can view:
+
+* Circles they created
+* Circles they have joined
+
+## Multi-language interface
+
+NimCircle currently supports:
+
+* English
+* Spanish
+* German
+* French
+* Portuguese
+
+The interface uses a centralized translation system so user-facing UI strings can be localized consistently across screens, dialogs, forms, errors, and network guidance.
+
+---
+
+# Localization
+
+NimCircle uses a centralized TypeScript localization system.
+
+Translations are organized under:
+
+```text
+src/i18n/
+├── languages/
+│   ├── en.ts
+│   ├── es.ts
+│   ├── de.ts
+│   ├── fr.ts
+│   └── pt.ts
+├── translationTypes.ts
+├── translations.ts
+├── LanguageContext.ts
+├── LanguageProvider.tsx
+└── useLanguage.ts
+```
+
+The English translation file acts as the translation schema, while the other languages are checked against that structure using TypeScript.
+
+The application currently supports:
+
+```text
+English
+Spanish
+German
+French
+Portuguese
+```
+
+Localization covers the main application experience, including:
+
+* Navigation
+* Circle creation
+* Circle views
+* Profile screens
+* Contribution flows
+* Wallet states
+* Errors
+* Search and Circle ID discovery
+* Network guidance
+* Loading and success states
+
+This allows the same application flow to remain consistent while presenting user-facing content in the selected language.
 
 ---
 
@@ -285,13 +362,15 @@ NimCircle uses:
 @nimiq/mini-app-sdk
 ```
 
-The application initializes the provider through:
+Provider initialization is centralized through:
 
 ```ts
+import { init } from '@nimiq/mini-app-sdk'
+
 init({ timeout: 10_000 })
 ```
 
-The provider is then used for wallet access and NIM transaction requests.
+The provider is used for wallet access, consensus checks, and NIM transaction requests.
 
 ### Provider flow
 
@@ -305,11 +384,13 @@ Nimiq Pay Provider
 User approval
     ↓
 NIM transaction
+    ↓
+Nimiq network
 ```
 
 NimCircle never requests private keys or attempts to reproduce the wallet's signing process.
 
-The native Nimiq Pay approval experience remains responsible for transaction authorization.
+Nimiq Pay remains responsible for the sensitive wallet interaction and native transaction approval experience.
 
 ---
 
@@ -343,7 +424,7 @@ NimCircle API
      ▼
 Nimiq verification service
      │
-     ├── hash
+     ├── transaction hash
      ├── inclusion
      ├── execution result
      ├── recipient
@@ -388,11 +469,11 @@ A Circle begins in the `active` state.
           ┌─────────────┼─────────────┐
           │             │             │
           ▼             ▼             ▼
-     target met     deadline      creator
-                     passed       cancels
+      target met     deadline      creator
+                     passed        cancels
           │             │             │
           ▼             ▼             ▼
-     COMPLETED       EXPIRED       CANCELLED
+      COMPLETED      EXPIRED      CANCELLED
 ```
 
 ## Active
@@ -401,7 +482,7 @@ The Circle is accepting contributions.
 
 ## Completed
 
-The confirmed contribution total has reached or exceeded the target.
+The confirmed contribution total has reached the target.
 
 ## Expired
 
@@ -411,7 +492,7 @@ The deadline has passed before the target was reached.
 
 The creator manually cancelled the Circle.
 
-### Deadline extension
+## Deadline extension
 
 An active Circle can have its deadline extended by its creator.
 
@@ -428,6 +509,64 @@ The server remains the authority for these checks.
 
 ---
 
+# Network Configuration
+
+NimCircle's backend determines which Nimiq network the application is configured to use.
+
+The backend currently supports:
+
+```text
+TestAlbatross
+MainAlbatross
+```
+
+The frontend receives the public network configuration through:
+
+```text
+GET /api/config
+```
+
+which returns:
+
+```json
+{
+  "success": true,
+  "network": "testnet"
+}
+```
+
+or:
+
+```json
+{
+  "success": true,
+  "network": "mainnet"
+}
+```
+
+The application does not pretend that the Mini App SDK can directly identify the user's Testnet/Mainnet selection. Instead, NimCircle communicates which network the application is currently configured for.
+
+## Testnet user testing
+
+During the current user-testing phase, NimCircle is configured for **Nimiq Testnet**.
+
+Users who need to switch Nimiq Pay to Testnet can:
+
+1. Open the Nimiq Pay menu.
+2. Long-press **Settings** for about 10 seconds.
+3. Open **Provider Settings**.
+4. Change the network from **Default** to **Testnet**.
+5. Leave the other provider settings unchanged.
+6. Nimiq Pay reloads the Mini App automatically.
+
+Free test NIM can be obtained through the Nimiq Testnet environment for testing purposes.
+
+When NimCircle is configured for Mainnet, the same process can be used to change the network from **Default** to **Mainnet**.
+
+The application displays contextual network guidance so users know which network NimCircle currently expects.
+
+---
+
 # Architecture
 
 NimCircle uses a React frontend, an Express API, MongoDB, and Nimiq's transaction infrastructure.
@@ -441,24 +580,27 @@ NimCircle uses a React frontend, an Express API, MongoDB, and Nimiq's transactio
                    │
                    ▼
 ┌──────────────────────────────────────┐
-│          React + TypeScript           │
+│         React + TypeScript            │
 │                                      │
-│  App                                  │
-│  Circle views                         │
-│  Profile                              │
-│  Contribution flow                    │
-│  Wallet state                         │
+│  App                                 │
+│  Circle views                        │
+│  Profile                             │
+│  Contribution flow                   │
+│  Wallet state                        │
+│  Localization                        │
+│  Network guidance                    │
 └──────────────────┬───────────────────┘
                    │ HTTPS API
                    ▼
 ┌──────────────────────────────────────┐
-│         Express + Node.js API        │
+│          Express + Node.js API       │
 │                                      │
 │  Users                               │
 │  Circles                             │
 │  Contributions                       │
 │  Transaction verification            │
 │  Circle lifecycle                    │
+│  Network configuration                │
 └──────────────────┬───────────────────┘
                    │
                    ▼
@@ -470,6 +612,10 @@ NimCircle uses a React frontend, an Express API, MongoDB, and Nimiq's transactio
 │  Contributions                       │
 └──────────────────────────────────────┘
 ```
+
+The frontend does not determine whether a blockchain transaction should be considered valid.
+
+The backend remains responsible for important business rules and contribution verification.
 
 ---
 
@@ -509,9 +655,7 @@ targetAmount
 deadline
 creatorWallet
 creatorUserId
-goalOwnerWallet
-goalOwnerUserId
-creatorCommitment
+recipientWallet
 status
 completedAt
 cancelledAt
@@ -523,7 +667,7 @@ Amounts are stored as Luna rather than floating-point NIM values.
 
 ## Contribution
 
-A Contribution represents a transaction associated with a Circle.
+A Contribution represents a blockchain transaction associated with a Circle.
 
 Important fields include:
 
@@ -531,15 +675,13 @@ Important fields include:
 circleId
 contributorWallet
 contributorUserId
-recipientWallet
 amount
 transactionHash
-memo
 status
 confirmedAt
 ```
 
-Transaction hashes are uniquely indexed to prevent the same transaction from being recorded multiple times.
+Transaction hashes are uniquely indexed to prevent the same blockchain transaction from being recorded multiple times.
 
 ---
 
@@ -578,6 +720,8 @@ Examples include:
 * Deadline validation
 * Circle status
 * Duplicate transaction protection
+* Contribution amount validation
+* Recipient validation
 * Transaction verification
 
 ---
@@ -604,11 +748,19 @@ Wallet addresses are normalized before comparison and storage to avoid inconsist
 
 ---
 
+## Transaction failure handling
+
+The contribution flow distinguishes between a transaction that was never submitted and a transaction that was submitted but could not yet be confirmed by the backend.
+
+This prevents a user from being told that their payment failed simply because verification needs to be retried.
+
+---
+
 # Mobile-First Experience
 
-NimCircle is intended to be used inside Nimiq Pay on mobile devices.
+NimCircle is designed primarily for use inside Nimiq Pay on mobile devices.
 
-The interface is built around:
+The interface uses:
 
 * Touch-friendly controls
 * Compact cards
@@ -619,9 +771,9 @@ The interface is built around:
 * Clear transaction states
 * Minimal navigation overhead
 
-The target environment is not a desktop browser pretending to be a wallet app.
+The application has been tested inside Nimiq Pay on a physical Android device.
 
-The application is tested by opening the hosted Mini App through Nimiq Pay on a physical phone.
+The intended experience is not a desktop website pretending to be a wallet application. The primary interaction happens inside the Nimiq Pay Mini App environment.
 
 ---
 
@@ -646,7 +798,7 @@ The application is tested by opening the hosted Mini App through Nimiq Pay on a 
 
 * Nimiq
 * Nimiq Pay
-* TestAlbatross during development and testing
+* Nimiq TestAlbatross for current testing
 
 ## Deployment
 
@@ -658,7 +810,7 @@ The application is tested by opening the hosted Mini App through Nimiq Pay on a 
 
 # Project Structure
 
-The repository is organized around the frontend, backend, Nimiq integration, and development tooling.
+The repository is organized around the frontend, backend, Nimiq integration, localization, and development tooling.
 
 ```text
 nimcircle/
@@ -678,29 +830,49 @@ nimcircle/
 │   ├── routes/
 │   │   ├── circles.js
 │   │   ├── users.js
-│   │   └── index.js
+│   │   ├── contributions.js
+│   │   └── config.js
 │   │
 │   ├── services/
 │   │   ├── circleService.js
+│   │   ├── contributionService.js
 │   │   └── nimiqVerification.js
 │   │
 │   ├── db.js
-│   ├── server.js
-│   └── seed.js
+│   └── server.js
 │
 ├── src/
+│   ├── assets/
 │   ├── components/
 │   ├── hooks/
+│   │   └── useWallet.ts
+│   │
+│   ├── i18n/
+│   │   ├── languages/
+│   │   │   ├── en.ts
+│   │   │   ├── es.ts
+│   │   │   ├── de.ts
+│   │   │   ├── fr.ts
+│   │   │   └── pt.ts
+│   │   ├── translationTypes.ts
+│   │   ├── translations.ts
+│   │   ├── LanguageContext.ts
+│   │   ├── LanguageProvider.tsx
+│   │   └── useLanguage.ts
+│   │
 │   ├── lib/
 │   │   ├── api.ts
 │   │   ├── nimiq.ts
-│   │   └── nimiqPayment.ts
+│   │   ├── nimiqPayment.ts
+│   │   └── apiErrors.ts
 │   │
 │   ├── views/
 │   │   ├── CircleView.tsx
 │   │   ├── CirclesView.tsx
+│   │   ├── ConnectWalletView.tsx
 │   │   ├── CreateCircleView.tsx
-│   │   └── ProfileView.tsx
+│   │   ├── ProfileView.tsx
+│   │   └── WalletRestoringView.tsx
 │   │
 │   └── App.tsx
 │
@@ -731,12 +903,15 @@ The project was developed using Node.js `20.20.2`.
 
 ```bash
 git clone https://github.com/KAOS-CODM/nimcircle.git
+
 cd nimcircle
 ```
 
 ---
 
 ## Install dependencies
+
+Install the frontend dependencies:
 
 ```bash
 npm install
@@ -748,7 +923,7 @@ The backend has its own package configuration under:
 server/package.json
 ```
 
-Install backend dependencies according to that package configuration.
+Install the backend dependencies according to that package configuration.
 
 ---
 
@@ -776,7 +951,7 @@ The API exposes a health endpoint:
 /api/health
 ```
 
-A healthy response is expected to contain:
+A healthy response contains:
 
 ```json
 {
@@ -790,7 +965,9 @@ A healthy response is expected to contain:
 
 # Environment Variables
 
-The frontend uses Vite environment variables.
+## Frontend
+
+The frontend supports Vite environment variables.
 
 Example:
 
@@ -798,6 +975,8 @@ Example:
 VITE_API_BASE_URL=https://nimcircle-api.onrender.com/api
 VITE_NIMCIRCLE_URL=nimcircle.vercel.app
 ```
+
+## Backend
 
 The backend uses environment variables for configuration such as:
 
@@ -807,43 +986,56 @@ MONGODB_URI=<your-mongodb-connection-string>
 NIMIQ_NETWORK=TestAlbatross
 ```
 
-Do not commit secrets or private credentials to the repository.
+Supported network values include:
+
+```text
+TestAlbatross
+MainAlbatross
+```
+
+Do not commit secrets, database credentials, private keys, or other sensitive configuration to the repository.
 
 ---
 
-# Testing with TestAlbatross
+# Testing with Nimiq Testnet
 
-NimCircle uses **TestAlbatross** during development and testing.
+NimCircle currently uses **Nimiq Testnet / TestAlbatross** for development and user testing.
 
-TestAlbatross allows the complete NIM transaction flow to be exercised without requiring real-value MainAlbatross funds.
+Testnet allows the complete contribution flow to be exercised without requiring real-value Mainnet funds.
 
-This makes it possible to test:
+The following flow can be tested:
 
 * Wallet connection
+* Profile creation
+* Circle creation
+* Circle ID sharing
+* Circle discovery
 * NIM transaction approval
 * Transaction submission
-* Transaction hashes
 * Transaction verification
 * Contribution recording
 * Circle progress
 * Circle completion
+* Deadline management
+* Circle cancellation
 * Error handling
 
 ## Recommended test flow
 
-1. Open NimCircle in Nimiq Pay.
-2. Switch Nimiq Pay to the TestAlbatross network.
-3. Obtain test NIM.
+1. Open NimCircle through Nimiq Pay.
+2. Switch Nimiq Pay from **Default** to **Testnet** if necessary.
+3. Obtain free test NIM.
 4. Connect the wallet.
-5. Create a Circle.
-6. Open the Circle.
-7. Share the Circle link.
-8. Use a contributor wallet to contribute NIM.
-9. Approve the transaction in Nimiq Pay.
-10. Wait for the transaction to be verified.
-11. Confirm that the contribution appears in the Circle.
-12. Confirm that the progress amount updates.
-13. Test the relevant Circle lifecycle actions.
+5. Create a profile.
+6. Create a Circle.
+7. Copy the Circle ID.
+8. Open the Circle from another user or wallet.
+9. Contribute NIM.
+10. Approve the transaction in Nimiq Pay.
+11. Wait for blockchain verification.
+12. Confirm that the contribution appears in the Circle.
+13. Confirm that the progress updates.
+14. Test relevant Circle lifecycle actions.
 
 ---
 
@@ -859,15 +1051,9 @@ Production frontend:
 https://nimcircle.vercel.app
 ```
 
-Vercel is configured to serve the React application correctly when a user opens a nested Circle route directly.
+The frontend is configured to work as a hosted Mini App and to support Circle-related navigation without relying on a traditional multi-page server.
 
-The project uses a rewrite so routes such as:
-
-```text
-/circle/<circleId>
-```
-
-can be loaded directly instead of returning a static-hosting 404.
+When the connected GitHub repository receives a new deployment-triggering push, Vercel can build and deploy the updated frontend to the production URL.
 
 ---
 
@@ -887,396 +1073,83 @@ The Render service runs:
 node server/server.js
 ```
 
-Render provides the production port through its environment, so the application does not rely on a hardcoded production port.
+The production port is provided through the Render environment rather than relying on a hardcoded production port.
 
 ---
 
-# Pre-Ship Checklist
+# Development Status
 
-This checklist is based on the Nimiq Mini App development requirements used during the NimCircle build.
+NimCircle's core application flow is implemented and has been exercised in the Nimiq Pay environment.
 
-The status below reflects the current implementation and QA state.
-
----
-
-## 1. Provider integration
-
-### PASS: The app uses at least one provider method
-
-NimCircle uses the Nimiq provider exposed through the Nimiq Mini App SDK.
-
-The application uses provider functionality for:
-
-* Account access
-* Consensus checks
-* NIM transactions
-
----
-
-### PASS: `@nimiq/mini-app-sdk` is installed and `init()` is called
-
-The project uses:
-
-```ts
-import { init } from '@nimiq/mini-app-sdk'
-```
-
-Provider initialization is centralized and uses a timeout:
-
-```ts
-init({ timeout: 10_000 })
-```
-
----
-
-### PASS: Provider initialization is wrapped in error handling
-
-Wallet/provider initialization is handled through the application's wallet state and error handling.
-
-Initialization failures are surfaced rather than silently leaving the application in an unusable state.
-
----
-
-### PASS: The app shows a clear message when the provider is unavailable
-
-NimCircle detects when the Nimiq provider is unavailable.
-
-This is important because the Mini App is expected to run inside Nimiq Pay rather than as a normal standalone browser application.
-
----
-
-## 2. Mobile-first UI
-
-### PASS: The layout is responsive
-
-The application uses responsive layouts and mobile-oriented components.
-
-The primary target is the Nimiq Pay mobile environment.
-
----
-
-### PASS: Touch targets are designed for mobile interaction
-
-Primary controls and interactive elements use mobile-friendly sizing, including minimum-height button patterns around the 44px target.
-
----
-
-### PASS: No known horizontal scrolling issue
-
-The current layouts are designed around mobile-width containers and responsive content.
-
----
-
-### PASS: No desktop-only components are required
-
-The application does not depend on desktop-only navigation or interactions.
-
----
-
-### PASS: Text is designed to remain readable on mobile
-
-The interface uses readable mobile text sizes and avoids requiring users to zoom.
-
----
-
-### FAIL: Final mobile QA is not yet considered complete
-
-The implementation is mobile-first and has been tested inside Nimiq Pay on a physical phone, but the final visual QA pass across all views and the smallest target viewport has not yet been formally completed.
-
-**How to fix:**
-
-Perform a final pass at approximately:
+### Current core flow
 
 ```text
-375px
-360px
+Connect wallet
+      ↓
+Create profile
+      ↓
+Create Circle
+      ↓
+Share Circle ID
+      ↓
+Find Circle
+      ↓
+Contribute NIM
+      ↓
+Verify blockchain transaction
+      ↓
+Update Circle progress
+      ↓
+Complete goal
 ```
 
-and inspect:
-
-* Home/Circles view
-* Create Circle
-* Circle detail
-* Contribution modal
-* Profile
-* Success/error states
-* Deadline extension UI
-* Deep-linked Circle view
-
-This is a final polish task rather than an architectural issue.
-
----
-
-## 3. Security
-
-### PASS: No attempt to access private keys or wallet internal state
-
-NimCircle does not request or access private keys, seed phrases, or Nimiq Pay wallet internals.
-
----
-
-### PASS: Native approval dialogs are not bypassed
-
-Transaction approval is handled by Nimiq Pay through the provider.
-
----
-
-### PASS: No private keys, seed phrases, or sensitive wallet credentials are hardcoded
-
-No private wallet credentials are required by the application.
-
----
-
-### PASS: Sensitive actions go through the provider
-
-Wallet access and transaction submission are performed through the Nimiq provider.
-
----
-
-### SKIP: `eth_signTypedData_v4` / `personal_sign`
-
-NimCircle does not use Ethereum EIP-712 signing or `personal_sign`.
-
-The application uses native NIM transactions rather than EVM token signing.
-
----
-
-## 4. Error handling
-
-### PASS: User rejection is handled gracefully
-
-Wallet and transaction rejection errors are converted into clear user-facing messages.
-
-For example, provider rejection code `4001` is handled as a user cancellation rather than displayed as an alarming raw provider error.
-
----
-
-### PASS: Network/API failures are caught
-
-Wallet, API, and transaction operations include error handling.
-
-The contribution flow also distinguishes between:
-
-```text
-Transaction was not sent
-```
-
-and:
-
-```text
-Transaction was sent, but confirmation could not yet be completed
-```
-
-This prevents a user from incorrectly assuming that a successful blockchain transaction disappeared merely because the API request failed afterward.
-
----
-
-### SKIP: ERC-20 contract call failures
-
-NimCircle currently uses native NIM and does not perform ERC-20 contract calls.
-
----
-
-### FAIL: Final raw-error cleanup remains
-
-The main wallet and contribution flows have cleaned-up errors, but a few broader application paths can still expose backend/API error messages directly.
-
-**How to fix:**
-
-Perform a final application-wide pass over:
-
-* Profile loading
-* Circle loading
-* User/profile creation
-* Circle creation
-* Circle status operations
-* Deadline extension
-
-and replace overly technical backend messages where necessary with concise user-facing messages.
-
----
-
-## 5. Approval dialog UX
-
-### PASS: Confirmation-requiring provider calls require user intent
-
-Transaction requests occur from explicit user actions such as contributing NIM.
-
----
-
-### PASS: Confirmation dialogs are not fired in rapid sequence
-
-The contribution flow does not automatically fire multiple transaction confirmations.
-
----
-
-### PASS: Read-only operations do not trigger wallet approvals
-
-Circle and profile data are retrieved through the API and do not require wallet approval.
-
----
-
-### PASS: No approval dialog is triggered on page load
-
-Opening NimCircle does not automatically request a transaction or other confirmation dialog.
-
----
-
-## 6. Token handling
-
-### SKIP: ERC-20 contract addresses
-
-NimCircle does not currently use ERC-20 tokens.
-
----
-
-### SKIP: ERC-20 token decimals
-
-NimCircle uses native NIM.
-
-Internally, NIM amounts are represented using Luna:
-
-```text
-1 NIM = 100,000 Luna
-```
-
-The application validates Luna values as safe integer amounts rather than relying on floating-point blockchain amounts.
-
----
-
-### SKIP: EVM chain switching
-
-NimCircle does not make ERC-20 contract calls and therefore does not need EVM chain switching.
-
----
-
-### SKIP: ABI encoding
-
-NimCircle does not encode ERC-20 contract calls.
-
----
-
-## 7. Chain usage
-
-### SKIP: Ethereum/EVM chain support
-
-NimCircle is a Nimiq-native application and does not use the Ethereum provider.
-
----
-
-### SKIP: `wallet_switchEthereumChain`
-
-No EVM chain switching is required.
-
----
-
-### SKIP: Error `4902`
-
-The `4902` EVM chain configuration error does not apply to the Nimiq-native transaction flow.
-
----
-
-## 8. Dev server and testing
-
-### PASS: Dev server is accessible over the local network
-
-The Vite development server is configured for network access so the application can be opened from a mobile device during development.
-
----
-
-### PASS: The application has been tested inside Nimiq Pay on a physical phone
-
-NimCircle has been opened inside Nimiq Pay on a Samsung Galaxy S10e.
-
-Provider initialization has been successfully verified in the Mini App environment.
-
-The application has also been tested using the hosted Vercel frontend and Render backend.
-
----
-
-### PASS: TestAlbatross transaction flow has been exercised
-
-The application has successfully completed a real TestAlbatross contribution flow.
-
-A successful transaction was verified and recorded as a confirmed NimCircle contribution.
-
----
-
-### SKIP: Secure-context-only fallback
-
-NimCircle does not currently depend on a secure-context-only browser API that requires a custom LAN fallback such as a `crypto.randomUUID()` workaround.
-
----
-
-## 9. Visual identity
-
-### SKIP: Nimiq logo/brand asset requirement
-
-NimCircle does not currently depend on copied Nimiq brand assets for its core visual identity.
-
-Where official Nimiq brand assets are used, they should be sourced from the official Nimiq Design Kit.
-
----
-
-### FAIL: Final NimCircle visual identity pass
-
-The application still has final branding work to complete, including the custom NimCircle logo/app icon direction.
-
-**How to fix:**
-
-Finalize:
-
-* NimCircle logo
-* App icon/favicon
-* Logo usage in the application
-* Final spacing and visual consistency
-* Any remaining typography/card/button polish
-
-This does not affect the core application functionality.
-
----
-
-# Pre-Ship Summary
-
-| Category             | Result                             |
-| -------------------- | ---------------------------------- |
-| Provider integration | PASS                               |
-| Mobile-first UI      | PASS with final QA remaining       |
-| Security             | PASS                               |
-| Error handling       | PASS with minor cleanup remaining  |
-| Approval dialog UX   | PASS                               |
-| Token handling       | SKIP                               |
-| Chain usage          | SKIP                               |
-| Dev server/testing   | PASS                               |
-| Visual identity      | FAIL pending final branding polish |
-
-The core application is **functionally complete and testable**.
-
-The remaining pre-ship work is primarily:
-
-1. Final mobile visual QA
-2. Final raw-error cleanup
-3. NimCircle logo/app icon
-4. Final visual consistency pass
+### Current implementation areas
+
+| Area                             | Status   |
+| -------------------------------- | -------- |
+| Nimiq Pay provider integration   | Complete |
+| Wallet connection                | Complete |
+| Wallet restoration/loading state | Complete |
+| User profiles                    | Complete |
+| Circle creation                  | Complete |
+| Circle discovery by ID           | Complete |
+| Circle progress tracking         | Complete |
+| NIM contribution flow            | Complete |
+| Transaction verification         | Complete |
+| Duplicate transaction protection | Complete |
+| Circle completion                | Complete |
+| Circle expiration                | Complete |
+| Circle cancellation              | Complete |
+| Deadline extension               | Complete |
+| Multi-language localization      | Complete |
+| Testnet network configuration    | Complete |
+| Network switching guidance       | Complete |
+| NimCircle branding/app icon      | Complete |
+| Vercel frontend deployment       | Complete |
+| Render backend deployment        | Complete |
+
+The remaining work is primarily **final QA, production verification, documentation, and competition submission preparation**.
 
 ---
 
 # Competition Context
 
-NimCircle was built for the **Nimiq Mini Apps Competition, Cycle II**.
+NimCircle was built for the:
 
-The project focuses on one of the most practical uses for a wallet-integrated Mini App: coordinating a shared financial goal.
+**Nimiq Mini Apps Competition · Cycle II**
 
-Rather than building a demonstration that only shows a wallet connection, NimCircle uses the Nimiq provider as part of the application's actual product flow.
+The project focuses on a practical use of a wallet-integrated Mini App: coordinating a shared financial goal.
 
-The blockchain transaction is directly connected to the application's data model:
+Rather than using the Nimiq provider only as a demonstration, NimCircle makes NIM transactions part of the application's core business logic.
+
+The blockchain transaction is connected directly to the Circle data model:
 
 ```text
 NIM transaction
       ↓
 Circle memo
       ↓
-transaction verification
+Transaction verification
       ↓
 Contribution
       ↓
@@ -1285,29 +1158,35 @@ Circle progress
 Goal completion
 ```
 
-This makes Nimiq part of the core application logic rather than an isolated feature.
+This means Nimiq is part of the actual product workflow rather than an isolated wallet-connect feature.
 
 ---
 
 # Development Philosophy
 
-NimCircle follows a few important principles.
+NimCircle follows several core principles.
 
 ## The blockchain transaction is the source of truth for contributions
 
 The frontend does not simply mark a contribution as successful because a button was clicked.
 
-A contribution becomes confirmed after transaction verification.
+A contribution becomes confirmed only after transaction verification.
+
+---
 
 ## The backend owns business rules
 
-Important authorization and Circle lifecycle rules are enforced server-side.
+Important authorization, validation, contribution, and Circle lifecycle rules are enforced server-side.
+
+---
 
 ## The wallet owns signing
 
 NimCircle never attempts to become the wallet.
 
-Nimiq Pay handles the sensitive wallet interaction and transaction approval.
+Nimiq Pay handles sensitive wallet interaction and transaction approval.
+
+---
 
 ## Keep the user flow simple
 
@@ -1317,11 +1196,11 @@ From the user's perspective:
 
 ```text
 Choose Circle
-     ↓
+      ↓
 Choose amount
-     ↓
+      ↓
 Approve NIM transaction
-     ↓
+      ↓
 Contribution confirmed
 ```
 
@@ -1331,18 +1210,20 @@ The complexity stays underneath the hood.
 
 # Roadmap
 
+The current competition build focuses on making the core NIM-powered shared-goal experience reliable and easy to use.
+
 Potential future improvements include:
 
-* More advanced Circle discovery
-* Improved contributor notifications
-* Additional sharing options
 * Richer Circle activity history
+* Contributor notifications
+* Additional sharing options
+* More advanced Circle discovery
 * More detailed contribution analytics
 * Additional Nimiq asset support where appropriate
-* Improved social/group coordination features
+* Expanded social/group coordination features
 * Production MainAlbatross rollout
 
-The current competition build focuses on making the core NIM-powered shared-goal experience reliable before expanding the feature set.
+These are intentionally secondary to the core Circle experience.
 
 ---
 
@@ -1361,5 +1242,3 @@ NimCircle is built around the Nimiq ecosystem and Nimiq Pay Mini App platform.
 The goal is simple:
 
 > **Make saving together with NIM feel as natural as saving together with people.**
-
----

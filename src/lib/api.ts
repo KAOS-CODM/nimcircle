@@ -1,5 +1,6 @@
 import type { Circle } from '../types/circle'
 import type { User } from '../types/user'
+import type { LanguageTranslations } from '../i18n/translationTypes'
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ||
@@ -171,6 +172,148 @@ export class ApiRequestError extends Error {
     this.code = options.code ?? null
     this.retryable =
       options.retryable === true
+  }
+}
+
+export function getLocalizedApiError(
+  error: unknown,
+  t: LanguageTranslations,
+): string {
+  if (
+    !(error instanceof ApiRequestError)
+  ) {
+    return t.app.errors.invalidResponse
+  }
+
+  switch (error.code) {
+    case 'NETWORK_ERROR':
+      return t.app.errors.network
+
+    case 'INVALID_RESPONSE':
+      return t.app.errors.invalidResponse
+
+    /* ------------------------------ Users -------------------------------- */
+
+    case 'WALLET_USERNAME_REQUIRED':
+      return t.app.errors.walletUsernameRequired
+
+    case 'USERNAME_LENGTH':
+      return t.app.errors.usernameLength
+
+    case 'USERNAME_FORMAT':
+      return t.app.errors.usernameFormat
+
+    case 'DISPLAY_NAME_LENGTH':
+      return t.app.errors.displayNameLength
+
+    case 'PROFILE_EXISTS':
+      return t.app.errors.profileExists
+
+    case 'USERNAME_TAKEN':
+      return t.app.errors.usernameTaken
+
+    case 'USER_ALREADY_EXISTS':
+      return t.app.errors.userAlreadyExists
+
+    case 'USER_NOT_FOUND':
+      return t.app.errors.userNotFound
+
+    case 'NO_VALID_UPDATE_FIELDS':
+      return t.app.errors.noValidUpdateFields
+
+    /* ----------------------------- Circles ------------------------------- */
+
+    case 'CIRCLE_FIELDS_REQUIRED':
+      return t.app.errors.circleFieldsRequired
+
+    case 'CREATOR_NOT_FOUND':
+      return t.app.errors.creatorNotFound
+
+    case 'CREATOR_WALLET_MISMATCH':
+      return t.app.errors.creatorWalletMismatch
+
+    case 'GOAL_OWNER_NOT_FOUND':
+      return t.app.errors.goalOwnerNotFound
+
+    case 'GOAL_OWNER_WALLET_MISMATCH':
+      return t.app.errors.goalOwnerWalletMismatch
+
+    case 'TARGET_AMOUNT_INVALID':
+      return t.app.errors.targetAmountInvalid
+
+    case 'CREATOR_COMMITMENT_INVALID':
+      return t.app.errors.creatorCommitmentInvalid
+
+    case 'CREATOR_COMMITMENT_TOO_LARGE':
+      return t.app.errors.creatorCommitmentTooLarge
+
+    case 'INVALID_DEADLINE':
+      return t.app.errors.invalidDeadline
+
+    case 'DEADLINE_NOT_FUTURE':
+      return t.app.errors.deadlineNotFuture
+
+    case 'CIRCLE_ALREADY_EXISTS':
+      return t.app.errors.circleAlreadyExists
+
+    case 'CIRCLE_NOT_FOUND':
+      return t.app.errors.circleNotFound
+
+    case 'WALLET_REQUIRED':
+      return t.app.errors.walletRequired
+
+    case 'INVALID_STATUS_CHANGE':
+      return t.app.errors.invalidStatusChange
+
+    case 'ONLY_CREATOR_CAN_CANCEL':
+      return t.app.errors.onlyCreatorCanCancel
+
+    case 'CIRCLE_STATUS_LOCKED':
+      return t.app.errors.circleStatusLocked
+
+    case 'ONLY_CREATOR_CAN_EXTEND':
+      return t.app.errors.onlyCreatorCanExtend
+
+    case 'CIRCLE_DEADLINE_LOCKED':
+      return t.app.errors.circleDeadlineLocked
+
+    case 'DEADLINE_REQUIRED':
+      return t.app.errors.deadlineRequired
+
+    case 'DEADLINE_MUST_BE_LATER':
+      return t.app.errors.deadlineMustBeLater
+
+    /* --------------------------- Contributions --------------------------- */
+
+    case 'TRANSACTION_HASH_REQUIRED':
+      return t.app.errors.transactionHashRequired
+
+    case 'TRANSACTION_NOT_FOUND':
+      return t.app.errors.transactionNotFound
+
+    case 'TRANSACTION_NOT_CONFIRMED':
+      return t.app.errors.transactionNotConfirmed
+
+    case 'TRANSACTION_FAILED':
+      return t.app.errors.transactionFailed
+
+    case 'RECIPIENT_MISMATCH':
+      return t.app.errors.recipientMismatch
+
+    case 'AMOUNT_MISMATCH':
+      return t.app.errors.amountMismatch
+
+    case 'MEMO_MISMATCH':
+      return t.app.errors.memoMismatch
+
+    case 'SENDER_MISMATCH':
+      return t.app.errors.senderMismatch
+
+    case 'CONTRIBUTION_NOT_FOUND':
+      return t.app.errors.contributionNotFound
+
+    default:
+      return t.app.errors.invalidResponse
   }
 }
 
@@ -512,21 +655,8 @@ async function request<T>(
       },
     })
   } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : String(error)
-
-    console.error(
-      '[NimCircle API] Network request failed:',
-      {
-        url,
-        error,
-      },
-    )
-
     throw new ApiRequestError(
-      `Unable to reach the NimCircle API at ${url}. Browser error: ${message}`,
+      'Network request failed.',
       {
         status: 0,
         code: 'NETWORK_ERROR',
@@ -550,12 +680,11 @@ async function request<T>(
     )
 
     throw new ApiRequestError(
-      `The server returned an invalid response (${response.status}).`,
+      'The server returned an invalid response.',
       {
         status: response.status,
         code: 'INVALID_RESPONSE',
-        retryable:
-          response.status >= 500,
+        retryable: response.status >= 500,
       },
     )
   }
