@@ -10,6 +10,7 @@ import {
   sendCircleContribution,
 } from '../lib/nimiqPayment'
 import { useLanguage } from '../i18n/useLanguage'
+import NetworkNotice from '../components/NetworkNotice'
 
 interface ContributeModalProps {
   circleId: string
@@ -18,6 +19,7 @@ interface ContributeModalProps {
   contributorWallet: string
   contributorUserId: string
   fixedAmountNim?: number
+  network: 'testnet' | 'mainnet' | null
   onClose: () => void
   onSuccess: () => void
 }
@@ -275,10 +277,12 @@ export default function ContributeModal({
   contributorWallet,
   contributorUserId,
   fixedAmountNim,
+  network,
   onClose,
   onSuccess,
 }: ContributeModalProps) {
   const { t } = useLanguage()
+
 
   const [amount, setAmount] =
     useState(
@@ -627,8 +631,13 @@ export default function ContributeModal({
         </div>
 
         <div className="px-6 pb-6 pt-6">
+          <NetworkNotice
+            network={network}
+            compact
+          />
+        
           {/* Amount */}
-          <div>
+          <div className="mt-5">
             <div className="flex items-center justify-between gap-3">
               <label
                 htmlFor="contribution-amount"

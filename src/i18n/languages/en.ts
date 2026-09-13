@@ -360,6 +360,9 @@ export const en = {
     title: 'Starting NimCircle',
     description: 'Connecting to Nimiq Pay...',
     initializing: 'Initializing your wallet connection',
+    networkMainnet: 'Nimiq Mainnet',
+    networkTestnet: 'Nimiq Testnet',
+    networkDetecting: 'Detecting network...',
   },
 
   welcomeBack: {
@@ -435,6 +438,12 @@ export const en = {
     
     paymentTransactionFailed:
       'Nimiq Pay could not send the transaction.',
+
+    testnetRequired:
+      'Nimiq Testnet required',
+    
+    testnetRequiredDescription:
+      'NimCircle is currently using Nimiq Testnet. Please switch Nimiq Pay to Testnet before contributing.',
   },
 
   profileSetup: {
@@ -474,6 +483,26 @@ export const en = {
       'A profile with this wallet address or username already exists.',
     unableToCreate:
       'Unable to create your profile. Please try again.',
+  },
+
+  networkNotice: {
+    testnetTitle: 'NimCircle is in user testing',
+    testnetDescription:
+      'NimCircle is currently running on Nimiq Testnet for the user testing phase. Please switch Nimiq Pay from Default to Testnet before connecting or making a contribution.',
+    mainnetTitle: 'NimCircle is now live',
+    mainnetDescription:
+      'The user testing phase is over. NimCircle is now running on Nimiq Mainnet. Please switch Nimiq Pay from Default to Mainnet before connecting or making a contribution.',
+    testnet: 'Testnet',
+    mainnet: 'Mainnet',
+    howToSwitchTestnet: 'How to switch to Testnet',
+    howToSwitchMainnet: 'How to switch to Mainnet',
+    testnetGuide:
+      'In Nimiq Pay, long-press Settings in the menu for about 10 seconds to open Provider Settings. On that screen, change the network from Default to Testnet. You do not need to change anything else. Nimiq Pay will reload the Mini App automatically. You can get free test NIM from the Nimiq Testnet page and use it to test NimCircle.',
+    mainnetGuide:
+      'In Nimiq Pay, long-press Settings in the menu for about 10 seconds to open Provider Settings. On that screen, change the network from Default to Mainnet. You do not need to change anything else. Nimiq Pay will reload the Mini App automatically.',
+    hideGuide: 'Hide instructions',
+    ignoreIfCorrect:
+      'Already using the correct network? You can ignore this message and continue.',
   },
 
   language: {

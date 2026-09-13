@@ -373,6 +373,9 @@ export const pt = {
     title: 'A iniciar o NimCircle',
     description: 'A ligar ao Nimiq Pay...',
     initializing: 'A inicializar a ligação à tua carteira',
+    networkMainnet: 'Nimiq Mainnet',
+    networkTestnet: 'Nimiq Testnet',
+    networkDetecting: 'Detetando rede...',
   },
 
   welcomeBack: {
@@ -448,6 +451,12 @@ export const pt = {
     
     paymentTransactionFailed:
       'O Nimiq Pay não conseguiu enviar a transação.',
+
+    testnetRequired:
+      'Nimiq Testnet necessário',
+    
+    testnetRequiredDescription:
+      'O NimCircle está usando o Nimiq Testnet. Mude o Nimiq Pay para Testnet antes de contribuir.',
   },
 
   profileSetup: {
@@ -487,6 +496,26 @@ export const pt = {
       'Já existe um perfil com este endereço de carteira ou nome de utilizador.',
     unableToCreate:
       'Não foi possível criar o seu perfil. Tente novamente.',
+  },
+
+  networkNotice: {
+    testnetTitle: 'O NimCircle está em fase de testes',
+    testnetDescription:
+      'O NimCircle está atualmente no Nimiq Testnet durante a fase de testes. Mude a rede do Nimiq Pay de Default para Testnet antes de conectar sua carteira ou fazer uma contribuição.',
+    mainnetTitle: 'O NimCircle está disponível',
+    mainnetDescription:
+      'A fase de testes terminou. O NimCircle agora está no Nimiq Mainnet. Mude a rede do Nimiq Pay de Default para Mainnet antes de conectar sua carteira ou fazer uma contribuição.',
+    testnet: 'Testnet',
+    mainnet: 'Mainnet',
+    howToSwitchTestnet: 'Como mudar para Testnet',
+    howToSwitchMainnet: 'Como mudar para Mainnet',
+    testnetGuide:
+      'No Nimiq Pay, abra o menu e mantenha Configurações pressionado por cerca de 10 segundos para abrir as configurações do provedor. Nessa tela, mude a rede de Default para Testnet. Você não precisa alterar mais nada. O Nimiq Pay recarregará a Mini App automaticamente. Você pode obter NIM de teste gratuitamente na página do Nimiq Testnet e usá-los para testar o NimCircle.',
+    mainnetGuide:
+      'No Nimiq Pay, abra o menu e mantenha Configurações pressionado por cerca de 10 segundos para abrir as configurações do provedor. Nessa tela, mude a rede de Default para Mainnet. Você não precisa alterar mais nada. O Nimiq Pay recarregará a Mini App automaticamente.',
+    hideGuide: 'Ocultar instruções',
+    ignoreIfCorrect:
+      'Já está usando a rede correta? Você pode ignorar esta mensagem e continuar.',
   },
 
   language: {

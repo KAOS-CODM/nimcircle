@@ -1,12 +1,14 @@
 import DiagnosticRow from '../../components/DiagnosticRow'
 import nimCircleLogo from '../../assets/nimcircle-logo.svg'
 import { useLanguage } from '../../i18n/useLanguage'
+import NetworkNotice from '../../components/NetworkNotice'
 
 interface ConnectWalletViewProps {
   onConnect: () => void
   loading: boolean
   error: string | null
   providerReady: boolean
+  network: 'testnet' | 'mainnet' | null
 }
 
 export default function ConnectWalletView({
@@ -14,6 +16,7 @@ export default function ConnectWalletView({
   loading,
   error,
   providerReady,
+  network,
 }: ConnectWalletViewProps) {
   const { t } = useLanguage()
 
@@ -52,6 +55,14 @@ export default function ConnectWalletView({
             </p>
           </div>
         </section>
+
+        {/* Network notice */}
+        <div className="mt-5">
+          <NetworkNotice network={network} />
+        </div>
+        
+        {/* Wallet connection card }
+        <section className="mt-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">*/}
 
         {/* Wallet connection card */}
         <section className="mt-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">

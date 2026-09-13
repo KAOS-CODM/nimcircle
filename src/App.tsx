@@ -8,7 +8,6 @@ import type { ReactNode } from 'react'
 import AppHeader from './components/AppHeader'
 import BottomNavigation from './components/BottomNavigation'
 import type { NavigationTab } from './components/BottomNavigation'
-
 import ProfileSetup from './components/ProfileSetup'
 import WelcomeBackModal from './components/WelcomeBackModal'
 
@@ -51,6 +50,7 @@ type Screen =
 interface ConnectedAppProps {
   address: string
   user: User
+  network: 'testnet' | 'mainnet' | null
 }
 
 function normalizeWalletAddress(
@@ -251,9 +251,14 @@ function getLocalizedApiError(
 
 function ProfileGate({
   address,
+  network,
   children,
 }: {
   address: string
+  network:
+    | 'testnet'
+    | 'mainnet'
+    | null
   children: (user: User) => ReactNode
 }) {
   const {
@@ -293,7 +298,6 @@ function ProfileGate({
         }
 
         setUser(existingUser)
-
         saveSession(existingUser)
 
         if (!justCreatedProfile) {
@@ -353,19 +357,15 @@ function ProfileGate({
             normalizeWalletAddress(
               address,
             ),
-
           username:
             data.username.trim(),
-
           displayName:
             data.displayName.trim(),
         })
 
       setJustCreatedProfile(true)
       setShowWelcome(false)
-
       saveSession(newUser)
-
       setUser(newUser)
     } catch (requestError) {
       setError(
@@ -380,7 +380,11 @@ function ProfileGate({
   }
 
   if (loading) {
-    return <WalletRestoringView />
+    return (
+      <WalletRestoringView
+        network={network}
+      />
+    )
   }
 
   if (error) {
@@ -453,6 +457,7 @@ function ProfileGate({
 function ConnectedApp({
   address,
   user,
+  network,
 }: ConnectedAppProps) {
   const {
     t,
@@ -629,8 +634,11 @@ function ConnectedApp({
           {(circleError ||
             joinedCircleError) && (
             <div className="mb-4 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {getLocalizedApiError(circleError ||
-                joinedCircleError, t)}
+              {getLocalizedApiError(
+                circleError ||
+                  joinedCircleError,
+                t,
+              )}
             </div>
           )}
 
@@ -647,29 +655,23 @@ function ConnectedApp({
               userName={
                 user.displayName
               }
-
               circles={
                 circles
               }
-
               joinedCircles={
                 joinedCircles
               }
-
               circleProgress={
                 circleProgress
               }
-
               onCreateCircle={() =>
                 setScreen('create')
               }
-
               onViewCircles={() =>
                 navigateTo(
                   'circles',
                 )
               }
-
               onOpenCircle={
                 openCircle
               }
@@ -685,13 +687,10 @@ function ConnectedApp({
           creatorWallet={
             address
           }
-
           onBack={goHome}
-
           onCreate={
             handleCreateCircle
           }
-
           loading={
             creatingCircle
           }
@@ -704,13 +703,19 @@ function ConnectedApp({
         <>
           {circleError && (
             <div className="mb-4 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {getLocalizedApiError(circleError, t)}
+              {getLocalizedApiError(
+                circleError,
+                t,
+              )}
             </div>
           )}
 
           {joinedCircleError && (
             <div className="mb-4 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {getLocalizedApiError(joinedCircleError, t)}
+              {getLocalizedApiError(
+                joinedCircleError,
+                t,
+              )}
             </div>
           )}
 
@@ -756,16 +761,14 @@ function ConnectedApp({
           circleId={
             activeCircleId
           }
-
           currentAddress={
             address
           }
-
           currentUserId={
             user.id
           }
-
           onBack={goHome}
+          network={network}
         />
       )
     }
@@ -775,31 +778,25 @@ function ConnectedApp({
         userName={
           user.displayName
         }
-
         circles={
           circles
         }
-
         joinedCircles={
           joinedCircles
         }
-
         circleProgress={
           circleProgress
         }
-
         onCreateCircle={() =>
           setScreen(
             'create',
           )
         }
-
         onViewCircles={() =>
           navigateTo(
             'circles',
           )
         }
-
         onOpenCircle={
           openCircle
         }
@@ -813,7 +810,6 @@ function ConnectedApp({
         address={
           address
         }
-
         onHome={
           goHome
         }
@@ -834,7 +830,6 @@ function ConnectedApp({
           activeTab={
             screen
           }
-
           onNavigate={
             navigateTo
           }
@@ -854,52 +849,37 @@ function AppContent() {
 
   if (wallet.loading) {
     return (
-      <WalletRestoringView />
+      <WalletRestoringView
+        network={wallet.debug.network}
+      />
     )
   }
 
   if (!wallet.address) {
     return (
       <ConnectWalletView
-        onConnect={
-          wallet.connectWallet
-        }
-
-        loading={
-          wallet.loading
-        }
-
-        error={
-          wallet.error
-        }
-
+        onConnect={wallet.connectWallet}
+        loading={wallet.loading}
+        error={wallet.error}
         providerReady={
-          wallet.debug
-            .providerInitialized
+          wallet.debug.providerInitialized
         }
+        network={wallet.debug.network}
       />
     )
   }
 
   return (
     <ProfileGate
-      key={
-        wallet.address
-      }
-
-      address={
-        wallet.address
-      }
+      key={wallet.address}
+      address={wallet.address}
+      network={wallet.debug.network}
     >
       {(user) => (
         <ConnectedApp
-          address={
-            wallet.address!
-          }
-
-          user={
-            user
-          }
+          address={wallet.address!}
+          user={user}
+          network={wallet.debug.network}
         />
       )}
     </ProfileGate>

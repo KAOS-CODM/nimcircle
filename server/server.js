@@ -8,6 +8,7 @@ const connectDatabase = require('./db')
 const userRoutes = require('./routes/users')
 const circleRoutes = require('./routes/circles')
 const contributionRoutes = require('./routes/contributions')
+const configRoutes = require('./routes/config')
 
 const app = express()
 
@@ -49,6 +50,11 @@ app.use(
 app.use(
   '/api/contributions',
   contributionRoutes,
+)
+
+app.use(
+  '/api/config',
+  configRoutes
 )
 
 /*

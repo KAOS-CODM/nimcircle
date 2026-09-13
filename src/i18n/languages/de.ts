@@ -366,6 +366,9 @@ export const de = {
     title: 'NimCircle wird gestartet',
     description: 'Verbindung mit Nimiq Pay wird hergestellt...',
     initializing: 'Deine Wallet-Verbindung wird initialisiert',
+    networkMainnet: 'Nimiq Mainnet',
+    networkTestnet: 'Nimiq Testnet',
+    networkDetecting: 'Netzwerk wird erkannt...',
   },
 
   welcomeBack: {
@@ -441,6 +444,12 @@ export const de = {
     
     paymentTransactionFailed:
       'Nimiq Pay konnte die Transaktion nicht senden.',
+
+    testnetRequired:
+      'Nimiq Testnet erforderlich',
+    
+    testnetRequiredDescription:
+      'NimCircle verwendet derzeit Nimiq Testnet. Wechsle Nimiq Pay zu Testnet, bevor du beiträgst.',
   },
 
   profileSetup: {
@@ -480,6 +489,26 @@ export const de = {
       'Für diese Wallet-Adresse oder diesen Benutzernamen existiert bereits ein Profil.',
     unableToCreate:
       'Dein Profil konnte nicht erstellt werden. Bitte versuche es erneut.',
+  },
+
+  networkNotice: {
+    testnetTitle: 'NimCircle befindet sich in der Testphase',
+    testnetDescription:
+      'NimCircle läuft derzeit während der Testphase auf Nimiq Testnet. Wechsle das Netzwerk in Nimiq Pay von Default zu Testnet, bevor du deine Wallet verbindest oder einen Beitrag leistest.',
+    mainnetTitle: 'NimCircle ist jetzt live',
+    mainnetDescription:
+      'Die Testphase ist beendet. NimCircle läuft jetzt auf Nimiq Mainnet. Wechsle das Netzwerk in Nimiq Pay von Default zu Mainnet, bevor du deine Wallet verbindest oder einen Beitrag leistest.',
+    testnet: 'Testnet',
+    mainnet: 'Mainnet',
+    howToSwitchTestnet: 'So wechselst du zu Testnet',
+    howToSwitchMainnet: 'So wechselst du zu Mainnet',
+    testnetGuide:
+      'Öffne in Nimiq Pay das Menü und halte Einstellungen etwa 10 Sekunden lang gedrückt, um die Provider-Einstellungen zu öffnen. Ändere dort das Netzwerk von Default zu Testnet. Du musst nichts anderes ändern. Nimiq Pay lädt die Mini App automatisch neu. Kostenloses Test-NIM erhältst du auf der Nimiq-Testnet-Seite und kannst es zum Testen von NimCircle verwenden.',
+    mainnetGuide:
+      'Öffne in Nimiq Pay das Menü und halte Einstellungen etwa 10 Sekunden lang gedrückt, um die Provider-Einstellungen zu öffnen. Ändere dort das Netzwerk von Default zu Mainnet. Du musst nichts anderes ändern. Nimiq Pay lädt die Mini App automatisch neu.',
+    hideGuide: 'Anleitung ausblenden',
+    ignoreIfCorrect:
+      'Verwendest du bereits das richtige Netzwerk? Dann kannst du diese Meldung ignorieren und fortfahren.',
   },
 
   language: {

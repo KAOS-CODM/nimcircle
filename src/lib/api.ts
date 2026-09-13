@@ -140,6 +140,10 @@ interface ApiErrorResponse {
   retryable?: boolean
 }
 
+interface ApiNetworkConfigResponse {
+  network: 'testnet' | 'mainnet'
+}
+
 /* -------------------------------------------------------------------------- */
 /* API error                                                                   */
 /* -------------------------------------------------------------------------- */
@@ -361,6 +365,21 @@ export function lunaToNim(
   }
 
   return luna / LUNA_PER_NIM
+}
+
+/* -------------------------------------------------------------------------- */
+/* App configuration                                                          */
+/* -------------------------------------------------------------------------- */
+
+export async function apiGetNetworkConfig(): Promise<
+  'testnet' | 'mainnet'
+> {
+  const response =
+    await request<ApiNetworkConfigResponse>(
+      '/config',
+    )
+
+  return response.network
 }
 
 /* -------------------------------------------------------------------------- */

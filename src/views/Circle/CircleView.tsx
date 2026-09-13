@@ -22,6 +22,7 @@ interface CircleViewProps {
   onBack: () => void
   currentAddress: string
   currentUserId: string
+  network: 'testnet' | 'mainnet' | null
 }
 
 interface CircleStats {
@@ -308,6 +309,7 @@ export default function CircleView({
   onBack,
   currentAddress,
   currentUserId,
+  network,
 }: CircleViewProps) {
   const {
     language,
@@ -1660,6 +1662,7 @@ export default function CircleView({
             onSuccess={
               handleContributionSuccess
             }
+            network={network}
           />
         )}
     </section>
