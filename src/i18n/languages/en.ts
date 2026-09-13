@@ -6,6 +6,97 @@ export const en = {
     profile: 'Profile',
   },
 
+  app: {
+    unableToLoadProfile: 'Unable to load your profile',
+    tryAgain: 'Try again',
+    loadingCircles: 'Loading your circles...',
+  
+    errors: {
+      network: 'We could not reach the NimCircle server. Please check your connection and try again.',
+      invalidResponse: 'The server returned an invalid response. Please try again.',
+  
+      walletUsernameRequired:
+        'Wallet address and username are required.',
+      usernameLength:
+        'Your username must be between 3 and 20 characters.',
+      usernameFormat:
+        'Username can only contain letters, numbers, and underscores.',
+      displayNameLength:
+        'Your display name must be 30 characters or fewer.',
+  
+      profileExists:
+        'A profile already exists for this wallet.',
+      usernameTaken:
+        'That username is already taken.',
+      userAlreadyExists:
+        'A profile with this wallet address or username already exists.',
+      userNotFound:
+        'User not found.',
+      noValidUpdateFields:
+        'No valid profile fields were provided.',
+  
+      circleFieldsRequired:
+        'Some required Circle information is missing.',
+      creatorNotFound:
+        'The Circle creator could not be found.',
+      creatorWalletMismatch:
+        'The creator wallet does not match the creator profile.',
+      goalOwnerNotFound:
+        'The goal owner could not be found.',
+      goalOwnerWalletMismatch:
+        'The goal owner wallet does not match the goal owner profile.',
+      targetAmountInvalid:
+        'The target amount is invalid.',
+      creatorCommitmentInvalid:
+        'The creator commitment is invalid.',
+      creatorCommitmentTooLarge:
+        'The creator commitment cannot exceed the Circle target.',
+      invalidDeadline:
+        'The deadline is invalid.',
+      deadlineNotFuture:
+        'The deadline must be in the future.',
+      circleAlreadyExists:
+        'A Circle with this ID already exists.',
+      circleNotFound:
+        'Circle not found.',
+      walletRequired:
+        'A wallet address is required.',
+      invalidStatusChange:
+        'The only manual status change allowed is cancellation.',
+      onlyCreatorCanCancel:
+        'Only the Circle creator can cancel it.',
+      circleStatusLocked:
+        'This Circle can no longer change status.',
+      onlyCreatorCanExtend:
+        'Only the Circle creator can extend the deadline.',
+      circleDeadlineLocked:
+        'This Circle can no longer extend its deadline.',
+      deadlineRequired:
+        'A deadline is required.',
+      deadlineMustBeLater:
+        'The new deadline must be later than the current deadline.',
+  
+      transactionHashRequired:
+        'A transaction hash is required.',
+      transactionNotFound:
+        'The transaction was not found in the Nimiq blockchain history.',
+      transactionNotConfirmed:
+        'The transaction has not been confirmed on the Nimiq blockchain.',
+      transactionFailed:
+        'The Nimiq transaction failed.',
+      recipientMismatch:
+        'The transaction recipient does not match the Circle goal owner.',
+      amountMismatch:
+        'The transaction amount does not match the contribution amount.',
+      memoMismatch:
+        'The transaction memo does not match the Circle.',
+      senderMismatch:
+        'The transaction sender does not match the contributor wallet.',
+      contributionNotFound:
+        'Contribution not found.',
+    },
+  },
+
   home: {
     welcomeBack: 'Welcome back',
     description: 'Save together. Reach goals together.',
@@ -67,6 +158,14 @@ export const en = {
     deadline: 'Deadline',
     goalOwner: 'Goal owner',
     openCircle: 'Open Circle',
+    findCircle: 'Find a Circle',
+    findCircleDescription:
+      'Enter a Circle ID shared with you to open the Circle.',
+    circleIdPlaceholder: 'Enter Circle ID',
+    search: 'Search',
+    searching: 'Searching...',
+    circleIdRequired: 'Enter a Circle ID.',
+    circleNotFound: 'Circle not found'
   },
 
   createCircle: {
@@ -184,7 +283,7 @@ export const en = {
     deadlineUnavailable: 'Deadline unavailable',
     deadlinePassed: 'Deadline passed',
     lessThanDay: 'Less than a day left',
-    daysLeft: 'days left',
+    daysLeft: '{count} days left',
     goalReachedDescription:
       'This Circle has reached its savings goal.',
     circleExpired: 'Circle expired',
@@ -206,6 +305,9 @@ export const en = {
       'The creator has not set a commitment for this Circle.',
     contributorDescription:
       'Thank you for helping this Circle reach its goal.',
+    circleId: 'Circle ID',
+    copyCircleId: 'Copy',
+    circleIdCopied: 'Copied',
   },
 
   profile: {
@@ -348,6 +450,7 @@ export const en = {
     displayNamePlaceholder: 'e.g. Kaos',
     connectedWallet: 'Connected wallet',
     createProfile: 'Create profile',
+  
     pleaseChooseUsername:
       'Please choose a username.',
     usernameTooShort:
@@ -362,7 +465,15 @@ export const en = {
       'Your display name must be at least 2 characters.',
     displayNameTooLong:
       'Your display name must be 30 characters or fewer.',
-    
+  
+    usernameTaken:
+      'That username is already taken.',
+    profileExists:
+      'A profile already exists for this wallet.',
+    userAlreadyExists:
+      'A profile with this wallet address or username already exists.',
+    unableToCreate:
+      'Unable to create your profile. Please try again.',
   },
 
   language: {

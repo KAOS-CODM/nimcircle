@@ -136,6 +136,183 @@ interface ApiCircleDetailsResponse {
 
 interface ApiErrorResponse {
   error?: string
+  code?: string | null
+  retryable?: boolean
+}
+
+/* -------------------------------------------------------------------------- */
+/* API error                                                                   */
+/* -------------------------------------------------------------------------- */
+
+export class ApiRequestError extends Error {
+  status: number
+  code: string | null
+  retryable: boolean
+
+  constructor(
+    message: string,
+    options: {
+      status: number
+      code?: string | null
+      retryable?: boolean
+      cause?: unknown
+    },
+  ) {
+    super(message, {
+      cause: options.cause,
+    })
+
+    this.name = 'ApiRequestError'
+    this.status = options.status
+    this.code = options.code ?? null
+    this.retryable =
+      options.retryable === true
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Backend error mapping                                                      */
+/*                                                                            */
+/* The backend continues returning its existing English messages.            */
+/* We convert those messages into stable frontend error codes here so the    */
+/* UI can display the currently selected language.                            */
+/* -------------------------------------------------------------------------- */
+
+function getApiErrorCode(
+  message: string,
+): string | null {
+  const normalized =
+    message
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, ' ')
+
+  const errorMap: Record<string, string> = {
+    /* ------------------------------ Users -------------------------------- */
+
+    'walletaddress and username are required':
+      'WALLET_USERNAME_REQUIRED',
+
+    'username must be between 3 and 20 characters':
+      'USERNAME_LENGTH',
+
+    'username can only contain letters, numbers, and underscores':
+      'USERNAME_FORMAT',
+
+    'display name must be 30 characters or fewer':
+      'DISPLAY_NAME_LENGTH',
+
+    'a profile already exists for this wallet':
+      'PROFILE_EXISTS',
+
+    'that username is already taken':
+      'USERNAME_TAKEN',
+
+    'a user with this wallet address or username already exists':
+      'USER_ALREADY_EXISTS',
+
+    'user not found':
+      'USER_NOT_FOUND',
+
+    'no valid fields to update':
+      'NO_VALID_UPDATE_FIELDS',
+
+    /* ----------------------------- Circles ------------------------------- */
+
+    'name, targetamount, deadline, creatorwallet, creatoruserid, goalownerwallet and creatorcommitment are required':
+      'CIRCLE_FIELDS_REQUIRED',
+
+    'creator user not found':
+      'CREATOR_NOT_FOUND',
+
+    'creator wallet does not match the user':
+      'CREATOR_WALLET_MISMATCH',
+
+    'goal owner user not found':
+      'GOAL_OWNER_NOT_FOUND',
+
+    'goal owner wallet does not match the user':
+      'GOAL_OWNER_WALLET_MISMATCH',
+
+    'targetamount must be a positive integer amount in luna':
+      'TARGET_AMOUNT_INVALID',
+
+    'creatorcommitment must be a non-negative integer amount in luna':
+      'CREATOR_COMMITMENT_INVALID',
+
+    'creatorcommitment cannot exceed the circle target':
+      'CREATOR_COMMITMENT_TOO_LARGE',
+
+    'invalid deadline':
+      'INVALID_DEADLINE',
+
+    'deadline must be in the future':
+      'DEADLINE_NOT_FUTURE',
+
+    'a circle with this id already exists':
+      'CIRCLE_ALREADY_EXISTS',
+
+    'circle not found':
+      'CIRCLE_NOT_FOUND',
+
+    'walletaddress is required':
+      'WALLET_REQUIRED',
+
+    'the only manual status change allowed is cancellation':
+      'INVALID_STATUS_CHANGE',
+
+    'only the circle creator can cancel it':
+      'ONLY_CREATOR_CAN_CANCEL',
+
+    'this circle can no longer change status':
+      'CIRCLE_STATUS_LOCKED',
+
+    'only the circle creator can extend the deadline':
+      'ONLY_CREATOR_CAN_EXTEND',
+
+    'this circle can no longer extend its deadline':
+      'CIRCLE_DEADLINE_LOCKED',
+
+    'deadline is required':
+      'DEADLINE_REQUIRED',
+
+    'new deadline must be later than the current deadline':
+      'DEADLINE_MUST_BE_LATER',
+
+    /* --------------------------- Contributions --------------------------- */
+
+    'transaction hash is required':
+      'TRANSACTION_HASH_REQUIRED',
+
+    'transaction was not found in the nimiq blockchain history':
+      'TRANSACTION_NOT_FOUND',
+
+    'transaction has not been confirmed on the nimiq blockchain':
+      'TRANSACTION_NOT_CONFIRMED',
+
+    'the nimiq transaction failed':
+      'TRANSACTION_FAILED',
+
+    'transaction recipient does not match the circle goal owner':
+      'RECIPIENT_MISMATCH',
+
+    'transaction amount does not match the contribution amount':
+      'AMOUNT_MISMATCH',
+
+    'transaction memo does not match the circle':
+      'MEMO_MISMATCH',
+
+    'transaction sender does not match the contributor wallet':
+      'SENDER_MISMATCH',
+
+    'contribution not found':
+      'CONTRIBUTION_NOT_FOUND',
+  }
+
+  return (
+    errorMap[normalized] ??
+    null
+  )
 }
 
 /* -------------------------------------------------------------------------- */
@@ -149,8 +326,12 @@ export function nimToLuna(
     !Number.isFinite(nim) ||
     nim <= 0
   ) {
-    throw new Error(
+    throw new ApiRequestError(
       'NIM amount must be greater than zero.',
+      {
+        status: 400,
+        code: 'NIM_AMOUNT_INVALID',
+      },
     )
   }
 
@@ -160,8 +341,12 @@ export function nimToLuna(
     )
 
   if (!Number.isSafeInteger(luna)) {
-    throw new Error(
+    throw new ApiRequestError(
       'NIM amount is too large.',
+      {
+        status: 400,
+        code: 'NIM_AMOUNT_TOO_LARGE',
+      },
     )
   }
 
@@ -290,8 +475,7 @@ async function request<T>(
   endpoint: string,
   options: RequestInit = {},
 ): Promise<T> {
-  const url =
-    `${API_BASE_URL}${endpoint}`
+  const url = `${API_BASE_URL}${endpoint}`
 
   console.log(
     '[NimCircle API] Request:',
@@ -301,20 +485,13 @@ async function request<T>(
   let response: Response
 
   try {
-    response =
-      await fetch(
-        url,
-        {
-          ...options,
-
-          headers: {
-            'Content-Type':
-              'application/json',
-
-            ...(options.headers || {}),
-          },
-        },
-      )
+    response = await fetch(url, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(options.headers || {}),
+      },
+    })
   } catch (error) {
     const message =
       error instanceof Error
@@ -329,9 +506,12 @@ async function request<T>(
       },
     )
 
-    throw new Error(
+    throw new ApiRequestError(
       `Unable to reach the NimCircle API at ${url}. Browser error: ${message}`,
       {
+        status: 0,
+        code: 'NETWORK_ERROR',
+        retryable: true,
         cause: error,
       },
     )
@@ -340,20 +520,24 @@ async function request<T>(
   let data: T | ApiErrorResponse
 
   try {
-    data =
-      await response.json()
+    data = await response.json()
   } catch {
     console.error(
       '[NimCircle API] Invalid JSON response:',
       {
         url,
-        status:
-          response.status,
+        status: response.status,
       },
     )
 
-    throw new Error(
+    throw new ApiRequestError(
       `The server returned an invalid response (${response.status}).`,
+      {
+        status: response.status,
+        code: 'INVALID_RESPONSE',
+        retryable:
+          response.status >= 500,
+      },
     )
   }
 
@@ -361,8 +545,7 @@ async function request<T>(
     '[NimCircle API] Response:',
     {
       url,
-      status:
-        response.status,
+      status: response.status,
       data,
     },
   )
@@ -371,9 +554,20 @@ async function request<T>(
     const errorData =
       data as ApiErrorResponse
 
-    throw new Error(
+    const message =
       errorData.error ||
-        `API request failed with status ${response.status}.`,
+      `API request failed with status ${response.status}.`
+
+    throw new ApiRequestError(
+      message,
+      {
+        status: response.status,
+        code:
+          errorData.code ??
+          getApiErrorCode(message),
+        retryable:
+          errorData.retryable === true,
+      },
     )
   }
 
@@ -612,12 +806,12 @@ export async function apiGetCircle(
       ),
     )
 
-    const contributions =
-      await Promise.all(
-        response.contributions.map(
-          enrichContributionWithUsername,
-        ),
-      )
+  const contributions =
+    await Promise.all(
+      response.contributions.map(
+        enrichContributionWithUsername,
+      ),
+    )
 
   return {
     circle,
@@ -657,7 +851,6 @@ export async function apiGetCircle(
     },
 
     contributions,
-      //response.contributions,
   }
 }
 

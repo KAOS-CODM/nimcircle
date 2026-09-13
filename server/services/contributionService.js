@@ -1,9 +1,46 @@
 const {
   verifyContributionTransaction,
 } = require('./nimiqVerification')
-const Contribution = require('../models/Contribution')
-const Circle = require('../models/Circle')
-const User = require('../models/User')
+
+const Contribution =
+  require('../models/Contribution')
+
+const Circle =
+  require('../models/Circle')
+
+const User =
+  require('../models/User')
+
+/* -------------------------------------------------------------------------- */
+/* Helpers                                                                    */
+/* -------------------------------------------------------------------------- */
+
+function normalizeWallet(
+  walletAddress,
+) {
+  return String(walletAddress || '')
+    .trim()
+    .replace(/\s+/g, '')
+    .toLowerCase()
+}
+
+function normalizeTransactionHash(
+  transactionHash,
+) {
+  return String(
+    transactionHash || '',
+  ).trim()
+}
+
+function normalizeMemo(memo) {
+  return typeof memo === 'string'
+    ? memo.trim()
+    : ''
+}
+
+/* -------------------------------------------------------------------------- */
+/* Create contribution                                                        */
+/* -------------------------------------------------------------------------- */
 
 async function createContribution({
   circleId,
@@ -30,10 +67,126 @@ async function createContribution({
     throw error
   }
 
+  const normalizedCircleId =
+    String(circleId).trim()
+
+  const normalizedWallet =
+    normalizeWallet(
+      contributorWallet,
+    )
+
+  const normalizedRecipientWallet =
+    normalizeWallet(
+      recipientWallet,
+    )
+
+  const normalizedHash =
+    normalizeTransactionHash(
+      transactionHash,
+    )
+
+  const normalizedMemo =
+    normalizeMemo(memo)
+
+  const parsedAmount =
+    Number(amount)
+
+  if (!normalizedHash) {
+    const error = new Error(
+      'transactionHash is required',
+    )
+
+    error.statusCode = 400
+    throw error
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Idempotency                                                             */
+  /* ---------------------------------------------------------------------- */
+
+  /*
+   * transactionHash is the unique identity of
+   * the blockchain payment.
+   *
+   * Check it before performing Circle-state
+   * validation so a retry can safely recover
+   * an already-created pending contribution.
+   */
+  const existingContribution =
+    await Contribution.findOne({
+      transactionHash:
+        normalizedHash,
+    })
+
+  if (existingContribution) {
+    const sameCircle =
+      existingContribution.circleId ===
+      normalizedCircleId
+
+    const sameWallet =
+      existingContribution
+        .contributorWallet ===
+      normalizedWallet
+
+    const sameRecipient =
+      existingContribution
+        .recipientWallet ===
+      normalizedRecipientWallet
+
+    const sameAmount =
+      existingContribution.amount ===
+      parsedAmount
+
+    const sameMemo =
+      existingContribution.memo ===
+      normalizedMemo
+
+    const sameUser =
+      String(
+        existingContribution
+          .contributorUserId,
+      ) ===
+      String(contributorUserId)
+
+    /*
+     * Never allow the same transaction hash
+     * to be reused with different contribution
+     * information.
+     */
+    if (
+      !sameCircle ||
+      !sameWallet ||
+      !sameRecipient ||
+      !sameAmount ||
+      !sameMemo ||
+      !sameUser
+    ) {
+      const error = new Error(
+        'This transaction hash is already associated with different contribution data',
+      )
+
+      error.statusCode = 409
+      throw error
+    }
+
+    /*
+     * The request is a safe retry.
+     *
+     * Return the existing contribution rather
+     * than creating a duplicate or returning
+     * an unnecessary 409 error.
+     */
+    return existingContribution
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Validate Circle                                                         */
+  /* ---------------------------------------------------------------------- */
+
   const circle =
     await Circle.findOne({
       circleId:
-        circleId.trim(),
+        normalizedCircleId,
     })
 
   if (!circle) {
@@ -45,10 +198,10 @@ async function createContribution({
     throw error
   }
 
-  /*
-   * Synchronize Circle status before
-   * accepting a new contribution.
-   */
+  /* ---------------------------------------------------------------------- */
+  /* Synchronize Circle status before accepting a new contribution           */
+  /* ---------------------------------------------------------------------- */
+
   if (
     circle.status ===
     'active'
@@ -60,7 +213,8 @@ async function createContribution({
             circleId:
               circle.circleId,
 
-            status: 'confirmed',
+            status:
+              'confirmed',
           },
         },
         {
@@ -75,8 +229,8 @@ async function createContribution({
       ])
 
     const raisedAmount =
-      contributionTotal[0]?.total ||
-      0
+      contributionTotal[0]
+        ?.total || 0
 
     if (
       raisedAmount >=
@@ -112,6 +266,10 @@ async function createContribution({
     throw error
   }
 
+  /* ---------------------------------------------------------------------- */
+  /* Validate contributor                                                    */
+  /* ---------------------------------------------------------------------- */
+
   const user =
     await User.findById(
       contributorUserId,
@@ -126,11 +284,6 @@ async function createContribution({
     throw error
   }
 
-  const normalizedWallet =
-    contributorWallet
-      .trim()
-      .toLowerCase()
-
   if (
     user.walletAddress !==
     normalizedWallet
@@ -143,10 +296,9 @@ async function createContribution({
     throw error
   }
 
-  const normalizedRecipientWallet =
-    recipientWallet
-      .trim()
-      .toLowerCase()
+  /* ---------------------------------------------------------------------- */
+  /* Validate recipient                                                      */
+  /* ---------------------------------------------------------------------- */
 
   /*
    * Every contribution must go to the
@@ -165,11 +317,8 @@ async function createContribution({
   }
 
   /*
-   * A personal goal cannot be funded by
-   * pretending the creator paid themselves.
-   *
-   * The creator commitment for a personal
-   * goal is handled separately.
+   * The goal owner cannot record a normal
+   * contribution to their own personal goal.
    */
   if (
     normalizedWallet ===
@@ -183,8 +332,9 @@ async function createContribution({
     throw error
   }
 
-  const parsedAmount =
-    Number(amount)
+  /* ---------------------------------------------------------------------- */
+  /* Validate amount                                                         */
+  /* ---------------------------------------------------------------------- */
 
   if (
     !Number.isSafeInteger(
@@ -200,41 +350,9 @@ async function createContribution({
     throw error
   }
 
-  const normalizedHash =
-    transactionHash.trim()
-
-  if (!normalizedHash) {
-    const error = new Error(
-      'transactionHash is required',
-    )
-
-    error.statusCode = 400
-    throw error
-  }
-
-  const normalizedMemo =
-    typeof memo === 'string'
-      ? memo.trim()
-      : ''
-
-  const existingContribution =
-    await Contribution.findOne({
-      transactionHash:
-        normalizedHash,
-    })
-
-  if (existingContribution) {
-    const error = new Error(
-      'This transaction has already been recorded',
-    )
-
-    error.statusCode = 409
-
-    error.contribution =
-      existingContribution
-
-    throw error
-  }
+  /* ---------------------------------------------------------------------- */
+  /* Check remaining Circle target                                           */
+  /* ---------------------------------------------------------------------- */
 
   const contributionTotal =
     await Contribution.aggregate([
@@ -243,7 +361,8 @@ async function createContribution({
           circleId:
             circle.circleId,
 
-          status: 'confirmed',
+          status:
+            'confirmed',
         },
       },
       {
@@ -258,8 +377,8 @@ async function createContribution({
     ])
 
   const raisedAmount =
-    contributionTotal[0]?.total ||
-    0
+    contributionTotal[0]
+      ?.total || 0
 
   const remainingAmount =
     Math.max(
@@ -279,6 +398,10 @@ async function createContribution({
     error.statusCode = 400
     throw error
   }
+
+  /* ---------------------------------------------------------------------- */
+  /* Create pending contribution                                             */
+  /* ---------------------------------------------------------------------- */
 
   try {
     const contribution =
@@ -309,13 +432,35 @@ async function createContribution({
 
     return contribution
   } catch (error) {
-    if (error.code === 11000) {
+    /*
+     * A concurrent request may have inserted
+     * the same transaction between our initial
+     * lookup and Contribution.create().
+     *
+     * Recover that situation safely.
+     */
+    if (
+      error.code === 11000
+    ) {
+      const duplicateContribution =
+        await Contribution.findOne({
+          transactionHash:
+            normalizedHash,
+        })
+
+      if (
+        duplicateContribution
+      ) {
+        return duplicateContribution
+      }
+
       const duplicateError =
         new Error(
           'This transaction has already been recorded',
         )
 
-      duplicateError.statusCode = 409
+      duplicateError.statusCode =
+        409
 
       throw duplicateError
     }
@@ -324,12 +469,31 @@ async function createContribution({
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/* Confirm contribution                                                       */
+/* -------------------------------------------------------------------------- */
+
 async function confirmContribution(
   transactionHash,
 ) {
+  const normalizedHash =
+    normalizeTransactionHash(
+      transactionHash,
+    )
+
+  if (!normalizedHash) {
+    const error = new Error(
+      'Transaction hash is required',
+    )
+
+    error.statusCode = 400
+    throw error
+  }
+
   const contribution =
     await Contribution.findOne({
-      transactionHash,
+      transactionHash:
+        normalizedHash,
     })
 
   if (!contribution) {
@@ -341,6 +505,12 @@ async function confirmContribution(
     throw error
   }
 
+  /*
+   * Idempotent confirmation.
+   *
+   * If the transaction has already been
+   * confirmed, return it immediately.
+   */
   if (
     contribution.status ===
     'confirmed'
@@ -348,6 +518,10 @@ async function confirmContribution(
     return contribution
   }
 
+  /*
+   * A permanently failed contribution
+   * should not be confirmed again.
+   */
   if (
     contribution.status ===
     'failed'
@@ -375,14 +549,20 @@ async function confirmContribution(
     throw error
   }
 
-  if (circle.status !== 'active') {
-    const error = new Error(
-      `Circle is ${circle.status}`,
-    )
-
-    error.statusCode = 400
-    throw error
-  }
+  /*
+   * IMPORTANT:
+   *
+   * Do not require the Circle to still be
+   * "active" here.
+   *
+   * A contribution may have been sent while
+   * the Circle was active and become visible
+   * on the blockchain after the Circle reached
+   * its target or expired.
+   *
+   * The transaction itself is what determines
+   * whether this pending contribution is valid.
+   */
 
   if (
     contribution.recipientWallet !==
@@ -395,6 +575,10 @@ async function confirmContribution(
     error.statusCode = 400
     throw error
   }
+
+  /* ---------------------------------------------------------------------- */
+  /* Verify transaction against blockchain                                   */
+  /* ---------------------------------------------------------------------- */
 
   const verification =
     await verifyContributionTransaction({
@@ -414,7 +598,9 @@ async function confirmContribution(
         contribution.memo,
     })
 
-  if (!verification.valid) {
+  if (
+    !verification.valid
+  ) {
     const reason =
       verification.reason ||
       'Nimiq transaction verification failed'
@@ -423,33 +609,47 @@ async function confirmContribution(
       new Error(reason)
 
     /*
-     * A transaction may already be broadcast
-     * but not yet appear in the recipient's
-     * blockchain history. This is temporary and
-     * should be retried rather than treated as
-     * a permanently invalid contribution.
+     * Verification now explicitly tells us
+     * whether the problem is temporary.
+     *
+     * Temporary examples:
+     * - transaction not visible yet
+     * - transaction not confirmed yet
+     * - temporary blockchain query failure
+     *
+     * Permanent examples:
+     * - wrong sender
+     * - wrong recipient
+     * - wrong amount
+     * - wrong memo
+     * - failed transaction
      */
-    const transactionNotFound =
-      reason
-        .toLowerCase()
-        .includes('transaction was not found')
+    error.code =
+      verification.code
 
-    if (transactionNotFound) {
-      error.statusCode = 409
-      error.code =
-        'TRANSACTION_NOT_FOUND'
-      error.retryable = true
-    } else {
+    error.retryable =
+      verification.retryable === true
+
+    if (
+      verification.retryable
+    ) {
       /*
-       * The transaction was found, but failed
-       * one of the actual contribution checks.
+       * 409 tells the frontend that the
+       * contribution exists but cannot be
+       * completed yet.
        */
-      error.statusCode = 400
-      error.retryable = false
+      error.statusCode = 409
+    } else {
+      error.statusCode =
+        400
     }
 
     throw error
   }
+
+  /* ---------------------------------------------------------------------- */
+  /* Mark contribution confirmed                                             */
+  /* ---------------------------------------------------------------------- */
 
   contribution.status =
     'confirmed'
@@ -459,22 +659,83 @@ async function confirmContribution(
 
   await contribution.save()
 
+  /* ---------------------------------------------------------------------- */
+  /* Synchronize Circle completion                                           */
+  /* ---------------------------------------------------------------------- */
+
+  /*
+   * The contribution has now been verified,
+   * so it can contribute to the Circle's
+   * confirmed total.
+   *
+   * We only synchronize completion after
+   * the contribution itself is confirmed.
+   */
+  if (
+    circle.status ===
+    'active'
+  ) {
+    const contributionTotal =
+      await Contribution.aggregate([
+        {
+          $match: {
+            circleId:
+              circle.circleId,
+
+            status:
+              'confirmed',
+          },
+        },
+        {
+          $group: {
+            _id: null,
+
+            total: {
+              $sum: '$amount',
+            },
+          },
+        },
+      ])
+
+    const raisedAmount =
+      contributionTotal[0]
+        ?.total || 0
+
+    if (
+      raisedAmount >=
+      circle.targetAmount
+    ) {
+      circle.status =
+        'completed'
+
+      circle.completedAt =
+        new Date()
+
+      await circle.save()
+    }
+  }
+
   return contribution
 }
+
+/* -------------------------------------------------------------------------- */
+/* Get user contributions                                                     */
+/* -------------------------------------------------------------------------- */
 
 async function getUserContributions(
   walletAddress,
 ) {
   const normalizedWallet =
-    walletAddress
-      .trim()
-      .toLowerCase()
+    normalizeWallet(
+      walletAddress,
+    )
 
   return Contribution.find({
     contributorWallet:
       normalizedWallet,
 
-    status: 'confirmed',
+    status:
+      'confirmed',
   })
     .sort({
       createdAt: -1,
@@ -482,13 +743,18 @@ async function getUserContributions(
     .lean()
 }
 
+/* -------------------------------------------------------------------------- */
+/* Get Circle contributions                                                   */
+/* -------------------------------------------------------------------------- */
+
 async function getCircleContributions(
   circleId,
 ) {
   return Contribution.find({
     circleId,
 
-    status: 'confirmed',
+    status:
+      'confirmed',
   })
     .populate(
       'contributorUserId',
@@ -499,6 +765,10 @@ async function getCircleContributions(
     })
     .lean()
 }
+
+/* -------------------------------------------------------------------------- */
+/* Exports                                                                    */
+/* -------------------------------------------------------------------------- */
 
 module.exports = {
   createContribution,

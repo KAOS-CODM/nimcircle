@@ -8,6 +8,97 @@ export const de = {
     profile: 'Profil',
   },
 
+  app: {
+    unableToLoadProfile:
+      'Dein Profil konnte nicht geladen werden',
+    tryAgain: 'Erneut versuchen',
+    loadingCircles:
+      'Deine Circles werden geladen...',
+  
+    errors: {
+      network:
+        'Der NimCircle-Server konnte nicht erreicht werden. Bitte überprüfe deine Verbindung und versuche es erneut.',
+      invalidResponse:
+        'Der Server hat eine ungültige Antwort zurückgegeben. Bitte versuche es erneut.',
+      walletUsernameRequired:
+        'Wallet-Adresse und Benutzername sind erforderlich.',
+      usernameLength:
+        'Dein Benutzername muss zwischen 3 und 20 Zeichen lang sein.',
+      usernameFormat:
+        'Der Benutzername darf nur Buchstaben, Zahlen und Unterstriche enthalten.',
+      displayNameLength:
+        'Dein Anzeigename darf höchstens 30 Zeichen lang sein.',
+      profileExists:
+        'Für diese Wallet existiert bereits ein Profil.',
+      usernameTaken:
+        'Dieser Benutzername ist bereits vergeben.',
+      userAlreadyExists:
+        'Für diese Wallet-Adresse oder diesen Benutzernamen existiert bereits ein Profil.',
+      userNotFound:
+        'Benutzer nicht gefunden.',
+      noValidUpdateFields:
+        'Es wurden keine gültigen Profilfelder angegeben.',
+      circleFieldsRequired:
+        'Einige erforderliche Circle-Informationen fehlen.',
+      creatorNotFound:
+        'Der Ersteller des Circles konnte nicht gefunden werden.',
+      creatorWalletMismatch:
+        'Die Wallet des Erstellers stimmt nicht mit seinem Profil überein.',
+      goalOwnerNotFound:
+        'Der Zielbesitzer konnte nicht gefunden werden.',
+      goalOwnerWalletMismatch:
+        'Die Wallet des Zielbesitzers stimmt nicht mit seinem Profil überein.',
+      targetAmountInvalid:
+        'Der Zielbetrag ist ungültig.',
+      creatorCommitmentInvalid:
+        'Die Verpflichtung des Erstellers ist ungültig.',
+      creatorCommitmentTooLarge:
+        'Die Verpflichtung des Erstellers darf das Circle-Ziel nicht überschreiten.',
+      invalidDeadline:
+        'Die Frist ist ungültig.',
+      deadlineNotFuture:
+        'Die Frist muss in der Zukunft liegen.',
+      circleAlreadyExists:
+        'Ein Circle mit dieser ID existiert bereits.',
+      circleNotFound:
+        'Circle nicht gefunden.',
+      walletRequired:
+        'Eine Wallet-Adresse ist erforderlich.',
+      invalidStatusChange:
+        'Die einzige manuelle Statusänderung ist die Stornierung.',
+      onlyCreatorCanCancel:
+        'Nur der Ersteller des Circles kann ihn stornieren.',
+      circleStatusLocked:
+        'Der Status dieses Circles kann nicht mehr geändert werden.',
+      onlyCreatorCanExtend:
+        'Nur der Ersteller des Circles kann die Frist verlängern.',
+      circleDeadlineLocked:
+        'Die Frist dieses Circles kann nicht mehr verlängert werden.',
+      deadlineRequired:
+        'Eine Frist ist erforderlich.',
+      deadlineMustBeLater:
+        'Die neue Frist muss nach der aktuellen Frist liegen.',
+      transactionHashRequired:
+        'Ein Transaktions-Hash ist erforderlich.',
+      transactionNotFound:
+        'Die Transaktion wurde nicht im Nimiq-Blockchain-Verlauf gefunden.',
+      transactionNotConfirmed:
+        'Die Transaktion wurde auf der Nimiq-Blockchain noch nicht bestätigt.',
+      transactionFailed:
+        'Die Nimiq-Transaktion ist fehlgeschlagen.',
+      recipientMismatch:
+        'Der Transaktionsempfänger stimmt nicht mit dem Zielbesitzer des Circles überein.',
+      amountMismatch:
+        'Der Transaktionsbetrag stimmt nicht mit dem Beitragsbetrag überein.',
+      memoMismatch:
+        'Das Transaktionsmemo stimmt nicht mit dem Circle überein.',
+      senderMismatch:
+        'Der Absender der Transaktion stimmt nicht mit der Wallet des Beitragszahlers überein.',
+      contributionNotFound:
+        'Beitrag nicht gefunden.',
+    },
+  },
+
   home: {
     welcomeBack: 'Willkommen zurück',
     description: 'Gemeinsam sparen. Gemeinsam Ziele erreichen.',
@@ -69,6 +160,15 @@ export const de = {
     deadline: 'Frist',
     goalOwner: 'Zielinhaber',
     openCircle: 'Kreis öffnen',
+    findCircle: 'Circle finden',
+    findCircleDescription:
+      'Gib eine geteilte Circle-ID ein, um den Circle zu öffnen.',
+    circleIdPlaceholder: 'Circle-ID eingeben',
+    search: 'Suchen',
+    searching: 'Suche...',
+    circleIdRequired: 'Gib eine Circle-ID ein.',
+    circleNotFound:
+      'Circle nicht gefunden.',
   },
 
   createCircle: {
@@ -188,7 +288,7 @@ export const de = {
     deadlineUnavailable: 'Frist nicht verfügbar',
     deadlinePassed: 'Frist abgelaufen',
     lessThanDay: 'Weniger als ein Tag übrig',
-    daysLeft: 'Tage übrig',
+    daysLeft: '{count} Tage übrig',
     goalReachedDescription:
       'Dieser Kreis hat sein Sparziel erreicht.',
     circleExpired: 'Kreis abgelaufen',
@@ -210,6 +310,9 @@ export const de = {
       'Der Ersteller hat keinen Beitrag für diesen Kreis festgelegt.',
     contributorDescription:
       'Danke, dass du diesem Kreis hilfst, sein Ziel zu erreichen.',
+    circleId: 'Circle-ID',
+    copyCircleId: 'Kopieren',
+    circleIdCopied: 'Kopiert',
   },
 
   profile: {
@@ -344,17 +447,18 @@ export const de = {
     eyebrow: 'NimCircle',
     title: 'Profil erstellen',
     description:
-      'Wähle einen Benutzernamen und einen Namen, an dem dich die Mitglieder deiner Circles erkennen können.',
+      'Wähle einen Benutzernamen und Namen, unter denen dich die Mitglieder deines Kreises erkennen können.',
     username: 'Benutzername',
     usernamePlaceholder: 'kaos',
     usernameHint:
-      '3–20 Zeichen mit Buchstaben, Zahlen oder Unterstrichen.',
+      '3-20 Zeichen mit Buchstaben, Zahlen oder Unterstrichen.',
     displayName: 'Anzeigename',
     displayNamePlaceholder: 'z. B. Kaos',
     connectedWallet: 'Verbundene Wallet',
     createProfile: 'Profil erstellen',
+  
     pleaseChooseUsername:
-      'Wähle einen Benutzernamen.',
+      'Bitte wähle einen Benutzernamen.',
     usernameTooShort:
       'Dein Benutzername muss mindestens 3 Zeichen lang sein.',
     usernameTooLong:
@@ -362,11 +466,20 @@ export const de = {
     usernameInvalid:
       'Der Benutzername darf nur Buchstaben, Zahlen und Unterstriche enthalten.',
     pleaseEnterDisplayName:
-      'Gib einen Anzeigenamen ein.',
+      'Bitte gib einen Anzeigenamen ein.',
     displayNameTooShort:
       'Dein Anzeigename muss mindestens 2 Zeichen lang sein.',
     displayNameTooLong:
       'Dein Anzeigename darf höchstens 30 Zeichen lang sein.',
+  
+    usernameTaken:
+      'Dieser Benutzername ist bereits vergeben.',
+    profileExists:
+      'Für diese Wallet existiert bereits ein Profil.',
+    userAlreadyExists:
+      'Für diese Wallet-Adresse oder diesen Benutzernamen existiert bereits ein Profil.',
+    unableToCreate:
+      'Dein Profil konnte nicht erstellt werden. Bitte versuche es erneut.',
   },
 
   language: {

@@ -7,6 +7,10 @@ import {
   useLanguage,
 } from '../../i18n/useLanguage'
 
+import {
+  ApiRequestError,
+} from '../../lib/api'
+
 interface CreateCircleViewProps {
   creatorWallet: string
   onBack: () => void
@@ -373,6 +377,24 @@ export default function CreateCircleView({
           parsedCreatorCommitment,
       })
     } catch (submitError) {
+      if (
+        submitError instanceof ApiRequestError
+      ) {
+        switch (submitError.code) {
+          case 'NIM_AMOUNT_INVALID':
+            setError(
+              t.contributeModal.paymentAmountInvalid,
+            )
+            return
+    
+          case 'NIM_AMOUNT_TOO_LARGE':
+            setError(
+              t.contributeModal.paymentAmountTooLarge,
+            )
+            return
+        }
+      }
+    
       setError(
         submitError instanceof Error
           ? submitError.message

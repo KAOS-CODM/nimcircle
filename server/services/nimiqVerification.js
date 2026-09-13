@@ -18,6 +18,10 @@ const MAIN_ALBATROSS_SEEDS = [
 
 let clientPromise = null
 
+/* -------------------------------------------------------------------------- */
+/* Address helpers                                                            */
+/* -------------------------------------------------------------------------- */
+
 function normalizeAddress(address) {
   return String(address || '')
     .trim()
@@ -39,11 +43,23 @@ function formatUserFriendlyAddress(address) {
     )
   }
 
-  return compactAddress
-    .toUpperCase()
-    .match(/.{1,4}/g)
-    .join(' ')
+  const groups =
+    compactAddress
+      .toUpperCase()
+      .match(/.{1,4}/g)
+
+  if (!groups) {
+    throw new Error(
+      'Invalid Nimiq address',
+    )
+  }
+
+  return groups.join(' ')
 }
+
+/* -------------------------------------------------------------------------- */
+/* Transaction data helpers                                                   */
+/* -------------------------------------------------------------------------- */
 
 function decodeTransactionData(data) {
   if (
@@ -64,12 +80,17 @@ function decodeTransactionData(data) {
     return String(data)
   }
 
-  const normalized = data.trim()
+  const normalized =
+    data.trim()
 
   if (!normalized) {
     return ''
   }
 
+  /*
+   * Nimiq transaction data may be returned
+   * as a hexadecimal string.
+   */
   if (
     normalized.length % 2 === 0 &&
     /^[0-9a-fA-F]+$/.test(normalized)
@@ -86,6 +107,10 @@ function decodeTransactionData(data) {
 
   return normalized
 }
+
+/* -------------------------------------------------------------------------- */
+/* Nimiq client                                                               */
+/* -------------------------------------------------------------------------- */
 
 async function getNimiqClient() {
   if (!clientPromise) {
@@ -123,13 +148,23 @@ async function getNimiqClient() {
 
         return client
       })().catch((error) => {
+        /*
+         * If client initialization fails,
+         * allow the next request to retry
+         * creating the client.
+         */
         clientPromise = null
+
         throw error
       })
   }
 
   return clientPromise
 }
+
+/* -------------------------------------------------------------------------- */
+/* Transaction lookup                                                         */
+/* -------------------------------------------------------------------------- */
 
 async function getTransactionByHash(
   transactionHash,
@@ -149,7 +184,7 @@ async function getTransactionByHash(
     )
 
   const normalizedHash =
-    transactionHash
+    String(transactionHash || '')
       .trim()
       .toLowerCase()
 
@@ -167,6 +202,10 @@ async function getTransactionByHash(
   )
 }
 
+/* -------------------------------------------------------------------------- */
+/* Contribution transaction verification                                      */
+/* -------------------------------------------------------------------------- */
+
 async function verifyContributionTransaction({
   transactionHash,
   contributorWallet,
@@ -177,6 +216,8 @@ async function verifyContributionTransaction({
   if (!transactionHash) {
     return {
       valid: false,
+      code: 'TRANSACTION_HASH_REQUIRED',
+      retryable: false,
       reason:
         'Transaction hash is required',
     }
@@ -193,19 +234,36 @@ async function verifyContributionTransaction({
   } catch (error) {
     return {
       valid: false,
+      code: 'BLOCKCHAIN_QUERY_FAILED',
+      retryable: true,
       reason:
         `Failed to query the Nimiq blockchain: ${error.message}`,
     }
   }
 
+  /*
+   * A freshly broadcast transaction may not
+   * immediately appear in the recipient's
+   * transaction history.
+   *
+   * This is temporary and must remain retryable.
+   */
   if (!transaction) {
     return {
       valid: false,
+      code: 'TRANSACTION_NOT_FOUND',
+      retryable: true,
       reason:
         'Transaction was not found in the Nimiq blockchain history',
     }
   }
 
+  /*
+   * The transaction exists, but may not have
+   * reached a confirmed/included state yet.
+   *
+   * This is also retryable.
+   */
   if (
     transaction.state !==
       'confirmed' &&
@@ -214,23 +272,37 @@ async function verifyContributionTransaction({
   ) {
     return {
       valid: false,
+      code: 'TRANSACTION_NOT_CONFIRMED',
+      retryable: true,
       reason:
         'Transaction has not been confirmed on the Nimiq blockchain',
       transaction,
     }
   }
 
+  /*
+   * The transaction was found and explicitly
+   * failed on the blockchain.
+   *
+   * This is a permanent failure.
+   */
   if (
     transaction.executionResult ===
     false
   ) {
     return {
       valid: false,
+      code: 'TRANSACTION_FAILED',
+      retryable: false,
       reason:
         'The Nimiq transaction failed',
       transaction,
     }
   }
+
+  /* ---------------------------------------------------------------------- */
+  /* Recipient verification                                                  */
+  /* ---------------------------------------------------------------------- */
 
   const expectedRecipient =
     normalizeAddress(
@@ -245,6 +317,8 @@ async function verifyContributionTransaction({
   if (!actualRecipient) {
     return {
       valid: false,
+      code: 'INVALID_RECIPIENT',
+      retryable: false,
       reason:
         'Transaction does not contain a valid recipient address',
       transaction,
@@ -257,11 +331,17 @@ async function verifyContributionTransaction({
   ) {
     return {
       valid: false,
+      code: 'RECIPIENT_MISMATCH',
+      retryable: false,
       reason:
         'Transaction recipient does not match the Circle goal owner',
       transaction,
     }
   }
+
+  /* ---------------------------------------------------------------------- */
+  /* Amount verification                                                     */
+  /* ---------------------------------------------------------------------- */
 
   const actualAmount =
     Number(transaction.value)
@@ -278,11 +358,17 @@ async function verifyContributionTransaction({
   ) {
     return {
       valid: false,
+      code: 'AMOUNT_MISMATCH',
+      retryable: false,
       reason:
         'Transaction amount does not match the contribution amount',
       transaction,
     }
   }
+
+  /* ---------------------------------------------------------------------- */
+  /* Memo verification                                                       */
+  /* ---------------------------------------------------------------------- */
 
   const actualMemo =
     decodeTransactionData(
@@ -300,11 +386,17 @@ async function verifyContributionTransaction({
   ) {
     return {
       valid: false,
+      code: 'MEMO_MISMATCH',
+      retryable: false,
       reason:
         'Transaction memo does not match the Circle',
       transaction,
     }
   }
+
+  /* ---------------------------------------------------------------------- */
+  /* Sender verification                                                     */
+  /* ---------------------------------------------------------------------- */
 
   const expectedContributor =
     normalizeAddress(
@@ -314,6 +406,10 @@ async function verifyContributionTransaction({
   let contributorMatches =
     false
 
+  /*
+   * HTLC transactions expose the original
+   * creator through proof.creator.
+   */
   if (
     transaction.senderType ===
     'htlc'
@@ -340,14 +436,22 @@ async function verifyContributionTransaction({
   if (!contributorMatches) {
     return {
       valid: false,
+      code: 'SENDER_MISMATCH',
+      retryable: false,
       reason:
         'Transaction sender does not match the contributor wallet',
       transaction,
     }
   }
 
+  /* ---------------------------------------------------------------------- */
+  /* Successful verification                                                 */
+  /* ---------------------------------------------------------------------- */
+
   return {
     valid: true,
+    code: 'TRANSACTION_VALID',
+    retryable: false,
     transaction,
   }
 }

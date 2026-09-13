@@ -32,8 +32,8 @@ interface UseCirclesResult {
   circleProgress: Record<string, CircleProgress>
   loadingCircles: boolean
   loadingJoinedCircles: boolean
-  circleError: string | null
-  joinedCircleError: string | null
+  circleError: unknown
+  joinedCircleError: unknown
   creatingCircle: boolean
   createCircle: (
     data: CreateCircleData,
@@ -67,10 +67,10 @@ export function useCircles(
     useState(true)
 
   const [circleError, setCircleError] =
-    useState<string | null>(null)
+    useState<unknown>(null)
 
   const [joinedCircleError, setJoinedCircleError] =
-    useState<string | null>(null)
+    useState<unknown>(null)
 
   const [creatingCircle, setCreatingCircle] =
     useState(false)
@@ -161,15 +161,9 @@ export function useCircles(
 
           setCircles(createdCircles)
         } else {
-          const message =
-            createdResult.reason instanceof
-            Error
-              ? createdResult.reason.message
-              : String(
-                  createdResult.reason,
-                )
-
-          setCircleError(message)
+          setCircleError(
+            createdResult.reason,
+          )
         }
 
         if (
@@ -181,15 +175,9 @@ export function useCircles(
 
           setJoinedCircles(joined)
         } else {
-          const message =
-            joinedResult.reason instanceof
-            Error
-              ? joinedResult.reason.message
-              : String(
-                  joinedResult.reason,
-                )
-
-          setJoinedCircleError(message)
+          setJoinedCircleError(
+            joinedResult.reason,
+          )
         }
 
         setLoadingCircles(false)
@@ -289,12 +277,7 @@ export function useCircles(
 
         return createdCircle
       } catch (error) {
-        const message =
-          error instanceof Error
-            ? error.message
-            : String(error)
-
-        setCircleError(message)
+        setCircleError(error)
 
         throw error
       } finally {

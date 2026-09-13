@@ -13,6 +13,11 @@ import type {
 } from '../../hooks/useCircles'
 
 import {
+  apiGetCircle,
+  ApiRequestError,
+} from '../../lib/api'
+
+import {
   useLanguage,
 } from '../../i18n/useLanguage'
 
@@ -52,6 +57,21 @@ export default function CirclesView({
     'created' | 'joined'
   >('created')
 
+  const [
+    circleSearchId,
+    setCircleSearchId,
+  ] = useState('')
+
+  const [
+    searchingCircle,
+    setSearchingCircle,
+  ] = useState(false)
+
+  const [
+    circleSearchError,
+    setCircleSearchError,
+  ] = useState('')
+
   const activeCircles =
     activeTab === 'created'
       ? circles
@@ -79,9 +99,11 @@ export default function CirclesView({
           circle,
         ) =>
           total +
-          (circleProgress[
-            circle.id
-          ]?.raisedAmount ?? 0),
+          (
+            circleProgress[
+              circle.id
+            ]?.raisedAmount ?? 0
+          ),
         0,
       ),
     [
@@ -94,6 +116,46 @@ export default function CirclesView({
     activeTab === 'created'
       ? loading
       : loadingJoined
+
+  async function handleSearchCircle() {
+    const searchId =
+      circleSearchId.trim()
+
+    if (!searchId) {
+      setCircleSearchError(
+        t.circles.circleIdRequired,
+      )
+      return
+    }
+
+    setSearchingCircle(true)
+    setCircleSearchError('')
+
+    try {
+      const response =
+        await apiGetCircle(searchId)
+
+      onOpenCircle(
+        response.circle.id,
+      )
+    } catch (requestError) {
+      if (
+        requestError instanceof ApiRequestError &&
+        requestError.code ===
+          'CIRCLE_NOT_FOUND'
+      ) {
+        setCircleSearchError(
+          t.app.errors.circleNotFound,
+        )
+      } else {
+        setCircleSearchError(
+          t.app.errors.network,
+        )
+      }
+    } finally {
+      setSearchingCircle(false)
+    }
+  }
 
   return (
     <section className="py-6">
@@ -127,10 +189,95 @@ export default function CirclesView({
           className="flex shrink-0 items-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-bold text-white shadow-sm transition active:scale-[0.98]"
         >
           <PlusIcon />
+
           <span>
             {t.circles.create}
           </span>
         </button>
+      </div>
+
+      {/* Find Circle */}
+      <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
+            <SearchIcon />
+          </div>
+
+          <div className="min-w-0">
+            <h2 className="text-sm font-black text-slate-950">
+              {t.circles.findCircle}
+            </h2>
+
+            <p className="mt-1 text-xs leading-5 text-slate-500">
+              {
+                t.circles
+                  .findCircleDescription
+              }
+            </p>
+          </div>
+        </div>
+
+        <form
+          onSubmit={(event) => {
+            event.preventDefault()
+            void handleSearchCircle()
+          }}
+          className="mt-4"
+        >
+          <div className="flex gap-2">
+            <div className="relative min-w-0 flex-1">
+              <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400">
+                <SearchIcon />
+              </div>
+
+              <input
+                type="text"
+                value={circleSearchId}
+                onChange={(event) => {
+                  setCircleSearchId(
+                    event.target.value,
+                  )
+                  setCircleSearchError('')
+                }}
+                placeholder={
+                  t.circles
+                    .circleIdPlaceholder
+                }
+                className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-3 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-100"
+                autoComplete="off"
+                spellCheck={false}
+              />
+
+            </div>
+
+            <button
+              type="submit"
+              disabled={
+                searchingCircle ||
+                !circleSearchId.trim()
+              }
+              className="flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-bold text-white shadow-sm transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {searchingCircle ? (
+                <SpinnerIcon />
+              ) : (
+                <SearchIcon />
+              )}
+
+              <span>
+                {searchingCircle
+                  ? t.circles.searching
+                  : t.circles.search}
+              </span>
+            </button>
+          </div>
+
+          {circleSearchError && (
+            <p className="mt-3 rounded-xl bg-red-50 p-3 text-xs leading-5 text-red-700">
+              {circleSearchError}
+            </p>
+          )}
+        </form>
       </div>
 
       {/* Tabs */}
@@ -201,10 +348,14 @@ export default function CirclesView({
                 {
                   activeCircles.length
                 }{' '}
-                {activeCircles.length ===
-                1
-                  ? t.circles.circle
-                  : t.circles.circles}
+                {
+                  activeCircles.length ===
+                  1
+                    ? t.circles
+                        .circle
+                    : t.circles
+                        .circles
+                }
               </p>
             </div>
 
@@ -393,12 +544,17 @@ function CircleCard({
           </p>
         </div>
 
-        <StatusBadge 
-          status={circle.status} 
-          isCompleted={isCompleted} 
-          isCancelled={isCancelled} 
-          isExpired={isExpired} 
-          t={t.circle} 
+        <StatusBadge
+          isCompleted={
+            isCompleted
+          }
+          isCancelled={
+            isCancelled
+          }
+          isExpired={
+            isExpired
+          }
+          t={t.circle}
         />
       </div>
 
@@ -470,7 +626,9 @@ function CircleCard({
       {/* Details */}
       <div className="mt-5 grid grid-cols-2 gap-3">
         <DetailCard
-          icon={<CommitmentIcon />}
+          icon={
+            <CommitmentIcon />
+          }
           label={
             t.circles
               .creatorCommitment
@@ -481,7 +639,9 @@ function CircleCard({
         />
 
         <DetailCard
-          icon={<CalendarIcon />}
+          icon={
+            <CalendarIcon />
+          }
           label={
             t.circles.deadline
           }
@@ -538,13 +698,11 @@ function CircleCard({
 }
 
 function StatusBadge({
-  //status,
   isCompleted,
   isCancelled,
   isExpired,
   t,
 }: {
-  status: Circle['status']
   isCompleted: boolean
   isCancelled: boolean
   isExpired: boolean
@@ -579,11 +737,11 @@ function StatusBadge({
   )
 }
 
-function DetailCard({ 
-  icon, 
-  label, 
-  value, 
-}: { 
+function DetailCard({
+  icon,
+  label,
+  value,
+}: {
   icon: ReactNode
   label: string
   value: string
@@ -732,7 +890,10 @@ function truncateWallet(
     return wallet
   }
 
-  return `${wallet.slice(0, 10)}...${wallet.slice(-8)}`
+  return `${wallet.slice(
+    0,
+    10,
+  )}...${wallet.slice(-8)}`
 }
 
 function PlusIcon() {
@@ -746,6 +907,33 @@ function PlusIcon() {
     >
       <path
         d="M12 5v14M5 12h14"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+function SearchIcon() {
+  return (
+    <svg
+      width="17"
+      height="17"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <circle
+        cx="11"
+        cy="11"
+        r="6.5"
+        stroke="currentColor"
+        strokeWidth="2"
+      />
+
+      <path
+        d="m16 16 4.5 4.5"
         stroke="currentColor"
         strokeWidth="2"
         strokeLinecap="round"
@@ -770,6 +958,7 @@ function CircleStackIcon() {
         stroke="currentColor"
         strokeWidth="2"
       />
+
       <circle
         cx="16"
         cy="16"
@@ -777,6 +966,7 @@ function CircleStackIcon() {
         stroke="currentColor"
         strokeWidth="2"
       />
+
       <path
         d="m11 11 2 2"
         stroke="currentColor"
@@ -803,6 +993,7 @@ function TargetIcon() {
         stroke="currentColor"
         strokeWidth="2"
       />
+
       <circle
         cx="12"
         cy="12"
@@ -810,6 +1001,7 @@ function TargetIcon() {
         stroke="currentColor"
         strokeWidth="2"
       />
+
       <circle
         cx="12"
         cy="12"
@@ -856,12 +1048,14 @@ function PeopleIcon() {
         stroke="currentColor"
         strokeWidth="2"
       />
+
       <path
         d="M3 19a6 6 0 0 1 12 0"
         stroke="currentColor"
         strokeWidth="2"
         strokeLinecap="round"
       />
+
       <path
         d="M16 11a3 3 0 0 0 0-6M18 13a5 5 0 0 1 3 4"
         stroke="currentColor"
@@ -888,6 +1082,7 @@ function CommitmentIcon() {
         stroke="currentColor"
         strokeWidth="2"
       />
+
       <path
         d="M12 7v10M15 9.5c-.7-.7-1.7-1-3-1-1.7 0-3 1-3 2.3 0 1.4 1.2 2 3 2.4 1.8.4 3 1 3 2.4 0 1.4-1.3 2.4-3 2.4-1.3 0-2.3-.4-3-1.1"
         stroke="currentColor"
@@ -916,6 +1111,7 @@ function CalendarIcon() {
         stroke="currentColor"
         strokeWidth="2"
       />
+
       <path
         d="M8 2v4M16 2v4M3 9h18"
         stroke="currentColor"
@@ -942,6 +1138,7 @@ function UserIcon() {
         stroke="currentColor"
         strokeWidth="2"
       />
+
       <path
         d="M4 21a8 8 0 0 1 16 0"
         stroke="currentColor"
@@ -990,6 +1187,7 @@ function SpinnerIcon() {
         strokeWidth="3"
         opacity="0.25"
       />
+
       <path
         d="M21 12a9 9 0 0 0-9-9"
         stroke="currentColor"

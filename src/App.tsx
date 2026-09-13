@@ -2,16 +2,19 @@ import {
   useEffect,
   useState,
 } from 'react'
+
 import type { ReactNode } from 'react'
 
 import AppHeader from './components/AppHeader'
 import BottomNavigation from './components/BottomNavigation'
 import type { NavigationTab } from './components/BottomNavigation'
+
 import ProfileSetup from './components/ProfileSetup'
 import WelcomeBackModal from './components/WelcomeBackModal'
 
 import ConnectWalletView from './views/Wallet/ConnectWalletView'
 import WalletRestoringView from './views/Wallet/WalletRestoringView'
+
 import HomeView from './views/Home/HomeView'
 import CreateCircleView from './views/CreateCircle/CreateCircleView'
 import CircleView from './views/Circle/CircleView'
@@ -26,6 +29,7 @@ import {
 } from './lib/userStorage'
 
 import {
+  ApiRequestError,
   apiCreateUser,
   apiGetUser,
 } from './lib/api'
@@ -35,6 +39,10 @@ import type { User } from './types/user'
 import {
   LanguageProvider,
 } from './i18n/LanguageProvider'
+
+import {
+  useLanguage,
+} from './i18n/useLanguage'
 
 type Screen =
   | NavigationTab
@@ -71,12 +79,14 @@ function AlertIcon() {
         strokeWidth="1.8"
         strokeLinecap="round"
       />
+
       <path
         d="M12 16h.01"
         stroke="currentColor"
         strokeWidth="2.4"
         strokeLinecap="round"
       />
+
       <path
         d="M10.3 3.9 2.7 17.2A1.8 1.8 0 0 0 4.25 20h15.5a1.8 1.8 0 0 0 1.55-2.8L13.7 3.9a1.96 1.96 0 0 0-3.4 0Z"
         stroke="currentColor"
@@ -85,6 +95,154 @@ function AlertIcon() {
       />
     </svg>
   )
+}
+
+/* -------------------------------------------------------------------------- */
+/* Localized API errors                                                       */
+/* -------------------------------------------------------------------------- */
+
+function getLocalizedApiError(
+  error: unknown,
+  t: ReturnType<typeof useLanguage>['t'],
+): string {
+  if (
+    !(error instanceof ApiRequestError)
+  ) {
+    return error instanceof Error
+      ? error.message
+      : String(error)
+  }
+
+  switch (error.code) {
+    case 'NETWORK_ERROR':
+      return t.app.errors.network
+
+    case 'INVALID_RESPONSE':
+      return t.app.errors.invalidResponse
+
+    /* ------------------------------ Users -------------------------------- */
+
+    case 'WALLET_USERNAME_REQUIRED':
+      return t.app.errors.walletUsernameRequired
+
+    case 'USERNAME_LENGTH':
+      return t.app.errors.usernameLength
+
+    case 'USERNAME_FORMAT':
+      return t.app.errors.usernameFormat
+
+    case 'DISPLAY_NAME_LENGTH':
+      return t.app.errors.displayNameLength
+
+    case 'PROFILE_EXISTS':
+      return t.app.errors.profileExists
+
+    case 'USERNAME_TAKEN':
+      return t.app.errors.usernameTaken
+
+    case 'USER_ALREADY_EXISTS':
+      return t.app.errors.userAlreadyExists
+
+    case 'USER_NOT_FOUND':
+      return t.app.errors.userNotFound
+
+    case 'NO_VALID_UPDATE_FIELDS':
+      return t.app.errors.noValidUpdateFields
+
+    /* ----------------------------- Circles ------------------------------- */
+
+    case 'CIRCLE_FIELDS_REQUIRED':
+      return t.app.errors.circleFieldsRequired
+
+    case 'CREATOR_NOT_FOUND':
+      return t.app.errors.creatorNotFound
+
+    case 'CREATOR_WALLET_MISMATCH':
+      return t.app.errors.creatorWalletMismatch
+
+    case 'GOAL_OWNER_NOT_FOUND':
+      return t.app.errors.goalOwnerNotFound
+
+    case 'GOAL_OWNER_WALLET_MISMATCH':
+      return t.app.errors.goalOwnerWalletMismatch
+
+    case 'TARGET_AMOUNT_INVALID':
+      return t.app.errors.targetAmountInvalid
+
+    case 'CREATOR_COMMITMENT_INVALID':
+      return t.app.errors.creatorCommitmentInvalid
+
+    case 'CREATOR_COMMITMENT_TOO_LARGE':
+      return t.app.errors.creatorCommitmentTooLarge
+
+    case 'INVALID_DEADLINE':
+      return t.app.errors.invalidDeadline
+
+    case 'DEADLINE_NOT_FUTURE':
+      return t.app.errors.deadlineNotFuture
+
+    case 'CIRCLE_ALREADY_EXISTS':
+      return t.app.errors.circleAlreadyExists
+
+    case 'CIRCLE_NOT_FOUND':
+      return t.app.errors.circleNotFound
+
+    case 'WALLET_REQUIRED':
+      return t.app.errors.walletRequired
+
+    case 'INVALID_STATUS_CHANGE':
+      return t.app.errors.invalidStatusChange
+
+    case 'ONLY_CREATOR_CAN_CANCEL':
+      return t.app.errors.onlyCreatorCanCancel
+
+    case 'CIRCLE_STATUS_LOCKED':
+      return t.app.errors.circleStatusLocked
+
+    case 'ONLY_CREATOR_CAN_EXTEND':
+      return t.app.errors.onlyCreatorCanExtend
+
+    case 'CIRCLE_DEADLINE_LOCKED':
+      return t.app.errors.circleDeadlineLocked
+
+    case 'DEADLINE_REQUIRED':
+      return t.app.errors.deadlineRequired
+
+    case 'DEADLINE_MUST_BE_LATER':
+      return t.app.errors.deadlineMustBeLater
+
+    /* --------------------------- Contributions --------------------------- */
+
+    case 'TRANSACTION_HASH_REQUIRED':
+      return t.app.errors.transactionHashRequired
+
+    case 'TRANSACTION_NOT_FOUND':
+      return t.app.errors.transactionNotFound
+
+    case 'TRANSACTION_NOT_CONFIRMED':
+      return t.app.errors.transactionNotConfirmed
+
+    case 'TRANSACTION_FAILED':
+      return t.app.errors.transactionFailed
+
+    case 'RECIPIENT_MISMATCH':
+      return t.app.errors.recipientMismatch
+
+    case 'AMOUNT_MISMATCH':
+      return t.app.errors.amountMismatch
+
+    case 'MEMO_MISMATCH':
+      return t.app.errors.memoMismatch
+
+    case 'SENDER_MISMATCH':
+      return t.app.errors.senderMismatch
+
+    case 'CONTRIBUTION_NOT_FOUND':
+      return t.app.errors.contributionNotFound
+
+    default:
+      return error.message || t.app.errors.invalidResponse
+  }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -98,6 +256,10 @@ function ProfileGate({
   address: string
   children: (user: User) => ReactNode
 }) {
+  const {
+    t,
+  } = useLanguage()
+
   const [user, setUser] =
     useState<User | null>(null)
 
@@ -110,8 +272,10 @@ function ProfileGate({
   const [showWelcome, setShowWelcome] =
     useState(false)
 
-  const [justCreatedProfile, setJustCreatedProfile] =
-    useState(false)
+  const [
+    justCreatedProfile,
+    setJustCreatedProfile,
+  ] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -121,12 +285,6 @@ function ProfileGate({
       setError(null)
 
       try {
-        /*
-         * The backend is the source of truth.
-         *
-         * If this request succeeds, the wallet already
-         * has a NimCircle profile.
-         */
         const existingUser =
           await apiGetUser(address)
 
@@ -136,16 +294,8 @@ function ProfileGate({
 
         setUser(existingUser)
 
-        /*
-         * Keep the local session synchronized with
-         * the backend profile.
-         */
         saveSession(existingUser)
 
-        /*
-         * Existing profile + not just created =
-         * returning user.
-         */
         if (!justCreatedProfile) {
           setShowWelcome(true)
         }
@@ -154,22 +304,20 @@ function ProfileGate({
           return
         }
 
-        const message =
-          requestError instanceof Error
-            ? requestError.message
-            : String(requestError)
-
-        /*
-         * No profile yet means this is a new user.
-         */
         if (
-          message === 'User not found'
+          requestError instanceof ApiRequestError &&
+          requestError.code === 'USER_NOT_FOUND'
         ) {
           setUser(null)
           setShowWelcome(false)
           setError(null)
         } else {
-          setError(message)
+          setError(
+            getLocalizedApiError(
+              requestError,
+              t,
+            ),
+          )
         }
       } finally {
         if (!cancelled) {
@@ -183,7 +331,11 @@ function ProfileGate({
     return () => {
       cancelled = true
     }
-  }, [address])
+  }, [
+    address,
+    justCreatedProfile,
+    t,
+  ])
 
   async function handleProfileComplete(
     data: {
@@ -195,44 +347,33 @@ function ProfileGate({
     setLoading(true)
 
     try {
-      /*
-       * Create the new profile in the backend.
-       */
       const newUser =
         await apiCreateUser({
           walletAddress:
             normalizeWalletAddress(
               address,
             ),
+
           username:
             data.username.trim(),
+
           displayName:
             data.displayName.trim(),
         })
 
-      /*
-       * This profile was just created, so the
-       * Welcome Back modal must not appear.
-       */
       setJustCreatedProfile(true)
       setShowWelcome(false)
 
-      /*
-       * Save the authenticated session.
-       */
       saveSession(newUser)
 
-      /*
-       * Enter the app immediately.
-       */
       setUser(newUser)
     } catch (requestError) {
-      const message =
-        requestError instanceof Error
-          ? requestError.message
-          : String(requestError)
-
-      setError(message)
+      setError(
+        getLocalizedApiError(
+          requestError,
+          t,
+        ),
+      )
     } finally {
       setLoading(false)
     }
@@ -256,7 +397,7 @@ function ProfileGate({
             </p>
 
             <h1 className="mt-2 text-xl font-semibold tracking-tight text-slate-900">
-              Unable to load your profile
+              {t.app.unableToLoadProfile}
             </h1>
 
             <p className="mt-3 text-sm leading-6 text-slate-500">
@@ -270,7 +411,7 @@ function ProfileGate({
               }}
               className="mt-6 w-full rounded-2xl bg-slate-900 px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-slate-800 active:scale-[0.99]"
             >
-              Try again
+              {t.app.tryAgain}
             </button>
           </div>
         </div>
@@ -278,10 +419,6 @@ function ProfileGate({
     )
   }
 
-  /*
-   * No backend profile means this is a first-time
-   * NimCircle user.
-   */
   if (!user) {
     return (
       <ProfileSetup
@@ -317,14 +454,10 @@ function ConnectedApp({
   address,
   user,
 }: ConnectedAppProps) {
-  /*
-   * Check whether the app was opened through
-   * a shared Circle URL.
-   *
-   * Example:
-   *
-   * /circle/circle_123456
-   */
+  const {
+    t,
+  } = useLanguage()
+
   function getCircleIdFromUrl(): string | null {
     const match =
       window.location.pathname.match(
@@ -357,10 +490,6 @@ function ConnectedApp({
     sharedCircleId,
   )
 
-  /*
-   * Circle collection data and Circle creation
-   * are managed by the useCircles hook.
-   */
   const {
     circles,
     joinedCircles,
@@ -371,7 +500,10 @@ function ConnectedApp({
     joinedCircleError,
     creatingCircle,
     createCircle,
-  } = useCircles(address, user)
+  } = useCircles(
+    address,
+    user,
+  )
 
   /* ------------------------------------------------------------------------ */
   /* Create Circle                                                            */
@@ -397,10 +529,6 @@ function ConnectedApp({
 
     setScreen('circle')
 
-    /*
-     * Keep the browser URL synchronized
-     * with the newly created Circle.
-     */
     const shareUrl =
       `/circle/${encodeURIComponent(
         createdCircle.id,
@@ -434,10 +562,6 @@ function ConnectedApp({
 
     setScreen('circle')
 
-    /*
-     * Keep the browser URL synchronized
-     * with the Circle currently being viewed.
-     */
     const shareUrl =
       `/circle/${encodeURIComponent(
         circleId,
@@ -461,10 +585,6 @@ function ConnectedApp({
     setActiveCircleId(null)
     setScreen('home')
 
-    /*
-     * Return to the Mini App's base URL
-     * when leaving a Circle.
-     */
     if (
       window.location.pathname !==
       '/'
@@ -483,10 +603,6 @@ function ConnectedApp({
     setActiveCircleId(null)
     setScreen(tab)
 
-    /*
-     * Navigation tabs represent the main
-     * Mini App, so remove any Circle path.
-     */
     if (
       window.location.pathname !==
       '/'
@@ -507,18 +623,14 @@ function ConnectedApp({
   /* ------------------------------------------------------------------------ */
 
   function renderScreen() {
-    /* ---------------------------------------------------------------------- */
-    /* Home                                                                   */
-    /* ---------------------------------------------------------------------- */
-
     if (screen === 'home') {
       return (
         <>
           {(circleError ||
             joinedCircleError) && (
             <div className="mb-4 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {circleError ||
-                joinedCircleError}
+              {getLocalizedApiError(circleError ||
+                joinedCircleError, t)}
             </div>
           )}
 
@@ -527,7 +639,7 @@ function ConnectedApp({
               <div className="mx-auto h-7 w-7 animate-spin rounded-full border-2 border-slate-200 border-t-emerald-500" />
 
               <p className="mt-4 text-sm font-medium text-slate-500">
-                Loading your circles...
+                {t.app.loadingCircles}
               </p>
             </div>
           ) : (
@@ -535,23 +647,29 @@ function ConnectedApp({
               userName={
                 user.displayName
               }
+
               circles={
                 circles
               }
+
               joinedCircles={
                 joinedCircles
               }
+
               circleProgress={
                 circleProgress
               }
+
               onCreateCircle={() =>
                 setScreen('create')
               }
+
               onViewCircles={() =>
                 navigateTo(
                   'circles',
                 )
               }
+
               onOpenCircle={
                 openCircle
               }
@@ -561,20 +679,19 @@ function ConnectedApp({
       )
     }
 
-    /* ---------------------------------------------------------------------- */
-    /* Create Circle                                                          */
-    /* ---------------------------------------------------------------------- */
-
     if (screen === 'create') {
       return (
         <CreateCircleView
           creatorWallet={
             address
           }
+
           onBack={goHome}
+
           onCreate={
             handleCreateCircle
           }
+
           loading={
             creatingCircle
           }
@@ -582,22 +699,18 @@ function ConnectedApp({
       )
     }
 
-    /* ---------------------------------------------------------------------- */
-    /* Circles                                                                */
-    /* ---------------------------------------------------------------------- */
-
     if (screen === 'circles') {
       return (
         <>
           {circleError && (
             <div className="mb-4 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {circleError}
+              {getLocalizedApiError(circleError, t)}
             </div>
           )}
 
           {joinedCircleError && (
             <div className="mb-4 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {joinedCircleError}
+              {getLocalizedApiError(joinedCircleError, t)}
             </div>
           )}
 
@@ -626,10 +739,6 @@ function ConnectedApp({
       )
     }
 
-    /* ---------------------------------------------------------------------- */
-    /* Profile                                                                */
-    /* ---------------------------------------------------------------------- */
-
     if (screen === 'profile') {
       return (
         <ProfileView
@@ -637,10 +746,6 @@ function ConnectedApp({
         />
       )
     }
-
-    /* ---------------------------------------------------------------------- */
-    /* Circle                                                                 */
-    /* ---------------------------------------------------------------------- */
 
     if (
       isCircleView &&
@@ -651,45 +756,50 @@ function ConnectedApp({
           circleId={
             activeCircleId
           }
+
           currentAddress={
             address
           }
+
           currentUserId={
             user.id
           }
+
           onBack={goHome}
         />
       )
     }
-
-    /* ---------------------------------------------------------------------- */
-    /* Fallback Home                                                          */
-    /* ---------------------------------------------------------------------- */
 
     return (
       <HomeView
         userName={
           user.displayName
         }
+
         circles={
           circles
         }
+
         joinedCircles={
           joinedCircles
         }
+
         circleProgress={
           circleProgress
         }
+
         onCreateCircle={() =>
           setScreen(
             'create',
           )
         }
+
         onViewCircles={() =>
           navigateTo(
             'circles',
           )
         }
+
         onOpenCircle={
           openCircle
         }
@@ -697,16 +807,13 @@ function ConnectedApp({
     )
   }
 
-  /* ------------------------------------------------------------------------ */
-  /* Connected App Layout                                                     */
-  /* ------------------------------------------------------------------------ */
-
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <AppHeader
         address={
           address
         }
+
         onHome={
           goHome
         }
@@ -727,6 +834,7 @@ function ConnectedApp({
           activeTab={
             screen
           }
+
           onNavigate={
             navigateTo
           }
@@ -756,12 +864,15 @@ function AppContent() {
         onConnect={
           wallet.connectWallet
         }
+
         loading={
           wallet.loading
         }
+
         error={
           wallet.error
         }
+
         providerReady={
           wallet.debug
             .providerInitialized
@@ -775,6 +886,7 @@ function AppContent() {
       key={
         wallet.address
       }
+
       address={
         wallet.address
       }
@@ -784,6 +896,7 @@ function AppContent() {
           address={
             wallet.address!
           }
+
           user={
             user
           }

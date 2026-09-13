@@ -8,6 +8,97 @@ export const es = {
     profile: 'Perfil',
   },
 
+  app: {
+    unableToLoadProfile:
+      'No se pudo cargar tu perfil',
+    tryAgain: 'Inténtalo de nuevo',
+    loadingCircles:
+      'Cargando tus círculos...',
+  
+    errors: {
+      network:
+        'No pudimos conectar con el servidor de NimCircle. Comprueba tu conexión e inténtalo de nuevo.',
+      invalidResponse:
+        'El servidor devolvió una respuesta no válida. Inténtalo de nuevo.',
+      walletUsernameRequired:
+        'Se requieren la dirección de la billetera y el nombre de usuario.',
+      usernameLength:
+        'Tu nombre de usuario debe tener entre 3 y 20 caracteres.',
+      usernameFormat:
+        'El nombre de usuario solo puede contener letras, números y guiones bajos.',
+      displayNameLength:
+        'Tu nombre para mostrar debe tener 30 caracteres o menos.',
+      profileExists:
+        'Ya existe un perfil para esta billetera.',
+      usernameTaken:
+        'Ese nombre de usuario ya está ocupado.',
+      userAlreadyExists:
+        'Ya existe un perfil con esta dirección de billetera o nombre de usuario.',
+      userNotFound:
+        'Usuario no encontrado.',
+      noValidUpdateFields:
+        'No se proporcionaron campos de perfil válidos.',
+      circleFieldsRequired:
+        'Falta información obligatoria del Circle.',
+      creatorNotFound:
+        'No se pudo encontrar al creador del Circle.',
+      creatorWalletMismatch:
+        'La billetera del creador no coincide con su perfil.',
+      goalOwnerNotFound:
+        'No se pudo encontrar al propietario del objetivo.',
+      goalOwnerWalletMismatch:
+        'La billetera del propietario del objetivo no coincide con su perfil.',
+      targetAmountInvalid:
+        'El importe objetivo no es válido.',
+      creatorCommitmentInvalid:
+        'El compromiso del creador no es válido.',
+      creatorCommitmentTooLarge:
+        'El compromiso del creador no puede superar el objetivo del Circle.',
+      invalidDeadline:
+        'La fecha límite no es válida.',
+      deadlineNotFuture:
+        'La fecha límite debe ser futura.',
+      circleAlreadyExists:
+        'Ya existe un Circle con este ID.',
+      circleNotFound:
+        'Circle no encontrado.',
+      walletRequired:
+        'Se requiere una dirección de billetera.',
+      invalidStatusChange:
+        'El único cambio de estado manual permitido es la cancelación.',
+      onlyCreatorCanCancel:
+        'Solo el creador del Circle puede cancelarlo.',
+      circleStatusLocked:
+        'Este Circle ya no puede cambiar de estado.',
+      onlyCreatorCanExtend:
+        'Solo el creador del Circle puede ampliar la fecha límite.',
+      circleDeadlineLocked:
+        'Este Circle ya no puede ampliar su fecha límite.',
+      deadlineRequired:
+        'Se requiere una fecha límite.',
+      deadlineMustBeLater:
+        'La nueva fecha límite debe ser posterior a la actual.',
+      transactionHashRequired:
+        'Se requiere un hash de transacción.',
+      transactionNotFound:
+        'No se encontró la transacción en el historial de la blockchain de Nimiq.',
+      transactionNotConfirmed:
+        'La transacción no ha sido confirmada en la blockchain de Nimiq.',
+      transactionFailed:
+        'La transacción de Nimiq falló.',
+      recipientMismatch:
+        'El destinatario de la transacción no coincide con el propietario del objetivo del Circle.',
+      amountMismatch:
+        'El importe de la transacción no coincide con el importe de la contribución.',
+      memoMismatch:
+        'El memo de la transacción no coincide con el Circle.',
+      senderMismatch:
+        'El remitente de la transacción no coincide con la billetera del contribuyente.',
+      contributionNotFound:
+        'Contribución no encontrada.',
+    },
+  },
+
   home: {
     welcomeBack: 'Bienvenido de nuevo',
     description: 'Ahorren juntos. Alcancen sus metas juntos.',
@@ -69,6 +160,15 @@ export const es = {
     deadline: 'Fecha límite',
     goalOwner: 'Propietario de la meta',
     openCircle: 'Abrir Círculo',
+    findCircle: 'Buscar un círculo',
+    findCircleDescription:
+      'Introduce un ID de círculo compartido contigo para abrir el círculo.',
+    circleIdPlaceholder: 'Introduce el ID del círculo',
+    search: 'Buscar',
+    searching: 'Buscando...',
+    circleIdRequired: 'Introduce un ID de círculo.',
+    circleNotFound:
+        'Circle no encontrado.',
   },
 
   createCircle: {
@@ -189,7 +289,7 @@ export const es = {
     deadlineUnavailable: 'Fecha límite no disponible',
     deadlinePassed: 'Fecha límite pasada',
     lessThanDay: 'Menos de un día restante',
-    daysLeft: 'días restantes',
+    daysLeft: '{count} días restantes',
     goalReachedDescription:
       'Este Círculo ha alcanzado su meta de ahorro.',
     circleExpired: 'Círculo expirado',
@@ -211,6 +311,9 @@ export const es = {
       'El creador no ha establecido un compromiso para este Círculo.',
     contributorDescription:
       'Gracias por ayudar a este Círculo a alcanzar su meta.',
+    circleId: 'ID del círculo',
+    copyCircleId: 'Copiar',
+    circleIdCopied: 'Copiado',
   },
 
   profile: {
@@ -349,11 +452,12 @@ export const es = {
     username: 'Nombre de usuario',
     usernamePlaceholder: 'kaos',
     usernameHint:
-      'De 3 a 20 caracteres usando letras, números o guiones bajos.',
-    displayName: 'Nombre visible',
-    displayNamePlaceholder: 'p. ej. Kaos',
+      '3-20 caracteres usando letras, números o guiones bajos.',
+    displayName: 'Nombre para mostrar',
+    displayNamePlaceholder: 'ej. Kaos',
     connectedWallet: 'Billetera conectada',
     createProfile: 'Crear perfil',
+  
     pleaseChooseUsername:
       'Elige un nombre de usuario.',
     usernameTooShort:
@@ -363,11 +467,20 @@ export const es = {
     usernameInvalid:
       'El nombre de usuario solo puede contener letras, números y guiones bajos.',
     pleaseEnterDisplayName:
-      'Introduce un nombre visible.',
+      'Introduce un nombre para mostrar.',
     displayNameTooShort:
-      'Tu nombre visible debe tener al menos 2 caracteres.',
+      'Tu nombre para mostrar debe tener al menos 2 caracteres.',
     displayNameTooLong:
-      'Tu nombre visible debe tener 30 caracteres o menos.',
+      'Tu nombre para mostrar debe tener 30 caracteres o menos.',
+  
+    usernameTaken:
+      'Ese nombre de usuario ya está en uso.',
+    profileExists:
+      'Ya existe un perfil para esta billetera.',
+    userAlreadyExists:
+      'Ya existe un perfil con esta dirección de billetera o nombre de usuario.',
+    unableToCreate:
+      'No se pudo crear tu perfil. Inténtalo de nuevo.',
   },
 
   language: {

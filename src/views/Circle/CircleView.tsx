@@ -43,7 +43,10 @@ interface CircleContribution {
   amount: number
   transactionHash: string
   memo: string
-  status: 'pending' | 'confirmed' | 'failed'
+  status:
+    | 'pending'
+    | 'confirmed'
+    | 'failed'
   confirmedAt: string | null
   createdAt: string
   updatedAt: string
@@ -63,7 +66,9 @@ const EMPTY_STATS: CircleStats = {
   creatorCommitment: 0,
 }
 
-function normalizeWalletAddress(address: string): string {
+function normalizeWalletAddress(
+  address: string,
+): string {
   return address
     .trim()
     .replace(/\s+/g, '')
@@ -74,35 +79,53 @@ function formatNumber(
   value: number,
   language: string,
 ): string {
-  return value.toLocaleString(language)
+  return value.toLocaleString(
+    language,
+  )
 }
 
 function formatNim(
   value: number,
   language: string,
 ): string {
-  return `${formatNumber(value, language)} NIM`
+  return `${formatNumber(
+    value,
+    language,
+  )} NIM`
 }
 
 function interpolate(
   template: string,
-  values: Record<string, string | number>,
+  values: Record<
+    string,
+    string | number
+  >,
 ): string {
   return template.replace(
     /\{(\w+)\}/g,
     (_, key: string) =>
-      String(values[key] ?? `{${key}}`),
+      String(
+        values[key] ??
+          `{${key}}`,
+      ),
   )
 }
 
-function toDateTimeLocalMin(value: string) {
+function toDateTimeLocalMin(
+  value: string,
+) {
   const date = new Date(value)
 
-  if (Number.isNaN(date.getTime())) {
+  if (
+    Number.isNaN(
+      date.getTime(),
+    )
+  ) {
     return undefined
   }
 
-  const offset = date.getTimezoneOffset()
+  const offset =
+    date.getTimezoneOffset()
 
   const localDate = new Date(
     date.getTime() -
@@ -120,7 +143,11 @@ function formatDate(
 ) {
   const date = new Date(value)
 
-  if (Number.isNaN(date.getTime())) {
+  if (
+    Number.isNaN(
+      date.getTime(),
+    )
+  ) {
     return value
   }
 
@@ -140,7 +167,11 @@ function formatDateTime(
 ) {
   const date = new Date(value)
 
-  if (Number.isNaN(date.getTime())) {
+  if (
+    Number.isNaN(
+      date.getTime(),
+    )
+  ) {
     return value
   }
 
@@ -156,20 +187,30 @@ function formatDateTime(
   )
 }
 
-function truncateHash(hash: string) {
+function truncateHash(
+  hash: string,
+) {
   if (hash.length <= 18) {
     return hash
   }
 
-  return `${hash.slice(0, 10)}...${hash.slice(-8)}`
+  return `${hash.slice(
+    0,
+    10,
+  )}...${hash.slice(-8)}`
 }
 
-function truncateWallet(wallet: string) {
+function truncateWallet(
+  wallet: string,
+) {
   if (wallet.length <= 18) {
     return wallet
   }
 
-  return `${wallet.slice(0, 10)}...${wallet.slice(-8)}`
+  return `${wallet.slice(
+    0,
+    10,
+  )}...${wallet.slice(-8)}`
 }
 
 function getContributorTotal(
@@ -183,9 +224,14 @@ function getContributorTotal(
         wallet.toLowerCase(),
     )
     .reduce(
-      (total, contribution) =>
+      (
+        total,
+        contribution,
+      ) =>
         total +
-        Number(contribution.amount) /
+        Number(
+          contribution.amount,
+        ) /
           100_000,
       0,
     )
@@ -196,7 +242,9 @@ function getDeadlineStatus(
   completed: boolean,
   now: number,
   language: string,
-  t: ReturnType<typeof useLanguage>['t']['circle'],
+  t: ReturnType<
+    typeof useLanguage
+  >['t']['circle'],
 ): DeadlineStatus {
   if (completed) {
     return {
@@ -207,7 +255,8 @@ function getDeadlineStatus(
 
   if (Number.isNaN(timestamp)) {
     return {
-      label: t.deadlineUnavailable,
+      label:
+        t.deadlineUnavailable,
       icon: '?',
     }
   }
@@ -226,7 +275,9 @@ function getDeadlineStatus(
     24 * 60 * 60 * 1000
 
   const daysRemaining =
-    Math.ceil(difference / day)
+    Math.ceil(
+      difference / day,
+    )
 
   if (daysRemaining <= 1) {
     return {
@@ -258,10 +309,15 @@ export default function CircleView({
   currentAddress,
   currentUserId,
 }: CircleViewProps) {
-  const { language, t } = useLanguage()
+  const {
+    language,
+    t,
+  } = useLanguage()
 
   const [circle, setCircle] =
-    useState<Circle | null>(null)
+    useState<Circle | null>(
+      null,
+    )
 
   const [now, setNow] =
     useState(() => Date.now())
@@ -274,13 +330,22 @@ export default function CircleView({
   const [linkCopied, setLinkCopied] =
     useState(false)
 
+  const [
+    circleIdCopied,
+    setCircleIdCopied,
+  ] = useState(false)
+
   const [stats, setStats] =
-    useState<CircleStats>(EMPTY_STATS)
+    useState<CircleStats>(
+      EMPTY_STATS,
+    )
 
   const [
     contributions,
     setContributions,
-  ] = useState<CircleContribution[]>([])
+  ] = useState<
+    CircleContribution[]
+  >([])
 
   const [
     loadingCircle,
@@ -295,7 +360,9 @@ export default function CircleView({
   const [
     circleError,
     setCircleError,
-  ] = useState<string | null>(null)
+  ] = useState<string | null>(
+    null,
+  )
 
   const [
     showDeadlineModal,
@@ -333,97 +400,100 @@ export default function CircleView({
   ] = useState('')
 
   useEffect(() => {
-    const interval = window.setInterval(() => {
-      setNow(Date.now())
-    }, 60_000)
+    const interval =
+      window.setInterval(() => {
+        setNow(Date.now())
+      }, 60_000)
 
     return () => {
-      window.clearInterval(interval)
+      window.clearInterval(
+        interval,
+      )
     }
   }, [])
 
   const loadCircle = useCallback(
-    async (initialLoad = false) => {
-      if (initialLoad) {
-        setLoadingCircle(true)
-      } else {
-        setRefreshingCircle(true)
-      }
-
+    async () => {
+      setRefreshingCircle(true)
       setCircleError(null)
-
+  
       try {
         const response =
           await apiGetCircle(circleId)
-
+  
         setCircle(response.circle)
+  
         setStats(
-          response.stats ?? EMPTY_STATS,
+          response.stats ??
+            EMPTY_STATS,
         )
+  
         setContributions(
-          response.contributions ?? [],
+          response.contributions ??
+            [],
         )
       } catch (requestError) {
         const message =
           requestError instanceof Error
             ? requestError.message
             : String(requestError)
-
+  
         setCircleError(message)
       } finally {
-        if (initialLoad) {
-          setLoadingCircle(false)
-        } else {
-          setRefreshingCircle(false)
-        }
+        setRefreshingCircle(false)
       }
     },
     [circleId],
   )
-
+  
   useEffect(() => {
     let cancelled = false
-
+  
     const loadInitialCircle =
       async () => {
-        setLoadingCircle(true)
-        setCircleError(null)
-
         try {
           const response =
             await apiGetCircle(circleId)
-
+  
           if (cancelled) {
             return
           }
-
-          setCircle(response.circle)
-          setStats(
-            response.stats ?? EMPTY_STATS,
+  
+          setCircle(
+            response.circle,
           )
+  
+          setStats(
+            response.stats ??
+              EMPTY_STATS,
+          )
+  
           setContributions(
-            response.contributions ?? [],
+            response.contributions ??
+              [],
           )
         } catch (requestError) {
           if (cancelled) {
             return
           }
-
+  
           const message =
             requestError instanceof Error
               ? requestError.message
               : String(requestError)
-
-          setCircleError(message)
+  
+          setCircleError(
+            message,
+          )
         } finally {
           if (!cancelled) {
             setLoadingCircle(false)
           }
         }
       }
-
+  
     void loadInitialCircle()
-
+  
     return () => {
       cancelled = true
     }
@@ -431,28 +501,40 @@ export default function CircleView({
 
   async function handleShare() {
     const miniAppUrl =
-      import.meta.env.VITE_NIMCIRCLE_URL
+      import.meta.env
+        .VITE_NIMCIRCLE_URL
 
     const shareUrl =
       `https://nimpay.app/miniapps/open/${miniAppUrl}/circle/${encodeURIComponent(circleId)}`
 
     try {
       const textArea =
-        document.createElement('textarea')
+        document.createElement(
+          'textarea',
+        )
 
       textArea.value = shareUrl
-      textArea.style.position = 'fixed'
-      textArea.style.left = '-9999px'
+      textArea.style.position =
+        'fixed'
+      textArea.style.left =
+        '-9999px'
       textArea.style.top = '0'
 
-      document.body.appendChild(textArea)
+      document.body.appendChild(
+        textArea,
+      )
+
       textArea.focus()
       textArea.select()
 
       const copied =
-        document.execCommand('copy')
+        document.execCommand(
+          'copy',
+        )
 
-      document.body.removeChild(textArea)
+      document.body.removeChild(
+        textArea,
+      )
 
       if (!copied) {
         throw new Error(
@@ -477,6 +559,63 @@ export default function CircleView({
     }
   }
 
+  async function handleCopyCircleId() {
+    if (!circle) {
+      return
+    }
+
+    try {
+      const textArea =
+        document.createElement(
+          'textarea',
+        )
+
+      textArea.value = circle.id
+      textArea.style.position =
+        'fixed'
+      textArea.style.left =
+        '-9999px'
+      textArea.style.top = '0'
+
+      document.body.appendChild(
+        textArea,
+      )
+
+      textArea.focus()
+      textArea.select()
+
+      const copied =
+        document.execCommand(
+          'copy',
+        )
+
+      document.body.removeChild(
+        textArea,
+      )
+
+      if (!copied) {
+        throw new Error(
+          'Copy command failed',
+        )
+      }
+
+      setCircleIdCopied(true)
+
+      window.setTimeout(() => {
+        setCircleIdCopied(false)
+      }, 2000)
+    } catch (error) {
+      console.error(
+        'Failed to copy Circle ID:',
+        error,
+      )
+
+      window.alert(
+        t.circle.unableToCopy,
+      )
+    }
+  }
+
   async function handleContributionSuccess() {
     await loadCircle()
   }
@@ -488,7 +627,8 @@ export default function CircleView({
 
     if (!newDeadline) {
       setDeadlineError(
-        t.circle.chooseNewDeadline,
+        t.circle
+          .chooseNewDeadline,
       )
       return
     }
@@ -502,7 +642,8 @@ export default function CircleView({
       )
     ) {
       setDeadlineError(
-        t.circle.validNewDeadline,
+        t.circle
+          .validNewDeadline,
       )
       return
     }
@@ -516,7 +657,8 @@ export default function CircleView({
       )
     ) {
       setDeadlineError(
-        t.circle.currentDeadlineInvalid,
+        t.circle
+          .currentDeadlineInvalid,
       )
       return
     }
@@ -526,7 +668,8 @@ export default function CircleView({
       currentDeadline.getTime()
     ) {
       setDeadlineError(
-        t.circle.newDeadlineMustBeLater,
+        t.circle
+          .newDeadlineMustBeLater,
       )
       return
     }
@@ -544,18 +687,31 @@ export default function CircleView({
           ),
         )
 
-      setCircle(updatedCircle)
-      setShowDeadlineModal(false)
+      setCircle(
+        updatedCircle,
+      )
+
+      setShowDeadlineModal(
+        false,
+      )
+
       setNewDeadline('')
 
       await loadCircle()
-    } catch (requestError) {
+    } catch (
+      requestError
+    ) {
       const message =
-        requestError instanceof Error
+        requestError instanceof
+        Error
           ? requestError.message
-          : String(requestError)
+          : String(
+              requestError,
+            )
 
-      setDeadlineError(message)
+      setDeadlineError(
+        message,
+      )
     } finally {
       setExtendingDeadline(false)
     }
@@ -578,19 +734,33 @@ export default function CircleView({
           ),
         )
 
-      setCircle(updatedCircle)
-      setShowCancelConfirm(false)
+      setCircle(
+        updatedCircle,
+      )
+
+      setShowCancelConfirm(
+        false,
+      )
 
       await loadCircle()
-    } catch (requestError) {
+    } catch (
+      requestError
+    ) {
       const message =
-        requestError instanceof Error
+        requestError instanceof
+        Error
           ? requestError.message
-          : String(requestError)
+          : String(
+              requestError,
+            )
 
-      setCancelError(message)
+      setCancelError(
+        message,
+      )
     } finally {
-      setCancellingCircle(false)
+      setCancellingCircle(
+        false,
+      )
     }
   }
 
@@ -616,7 +786,10 @@ export default function CircleView({
           </h2>
 
           <p className="mt-2 text-sm text-slate-500">
-            {t.circle.loadingDescription}
+            {
+              t.circle
+                .loadingDescription
+            }
           </p>
         </div>
       </section>
@@ -648,7 +821,7 @@ export default function CircleView({
           <button
             type="button"
             onClick={() =>
-              void loadCircle(true)
+              void loadCircle(/*true*/)
             }
             className="mt-4 rounded-xl bg-red-100 px-4 py-2 text-sm font-bold text-red-700"
           >
@@ -660,18 +833,32 @@ export default function CircleView({
   }
 
   const raisedAmount =
-    Number(stats.raisedAmount ?? 0)
+    Number(
+      stats.raisedAmount ?? 0,
+    )
 
   const targetAmount =
-    Number(stats.targetAmount ?? 0) > 0
-      ? Number(stats.targetAmount)
-      : Number(circle.targetAmount ?? 0)
+    Number(
+      stats.targetAmount ?? 0,
+    ) > 0
+      ? Number(
+          stats.targetAmount,
+        )
+      : Number(
+          circle.targetAmount ??
+            0,
+        )
 
   const remainingAmount =
     Math.max(
       0,
-      Number(stats.remainingAmount ?? 0) > 0
-        ? Number(stats.remainingAmount)
+      Number(
+        stats.remainingAmount ??
+          0,
+      ) > 0
+        ? Number(
+            stats.remainingAmount,
+          )
         : Math.max(
             0,
             targetAmount -
@@ -681,16 +868,21 @@ export default function CircleView({
 
   const contributorCount =
     Number(
-      stats.contributorCount ?? 0,
+      stats.contributorCount ??
+        0,
     )
 
   const creatorCommitment =
     Number(
-      stats.creatorCommitment ?? 0,
+      stats.creatorCommitment ??
+        0,
     ) > 0
-      ? Number(stats.creatorCommitment)
+      ? Number(
+          stats.creatorCommitment,
+        )
       : Number(
-          circle.creatorCommitment ?? 0,
+          circle.creatorCommitment ??
+            0,
         )
 
   const progress =
@@ -750,10 +942,12 @@ export default function CircleView({
       remainingAmount
 
   const isCompleted =
-    raisedAmount >= targetAmount
+    raisedAmount >=
+    targetAmount
 
   const isCancelled =
-    circle.status === 'cancelled'
+    circle.status ===
+    'cancelled'
 
   const isExpired =
     hasValidDeadline &&
@@ -807,7 +1001,9 @@ export default function CircleView({
             onClick={() =>
               void loadCircle()
             }
-            disabled={refreshingCircle}
+            disabled={
+              refreshingCircle
+            }
             className="mt-3 rounded-xl bg-red-100 px-4 py-2 text-xs font-bold text-red-700 disabled:opacity-50"
           >
             {refreshingCircle
@@ -819,8 +1015,12 @@ export default function CircleView({
 
       <GoalHeader
         circle={circle}
-        raisedAmount={raisedAmount}
-        targetAmount={targetAmount}
+        raisedAmount={
+          raisedAmount
+        }
+        targetAmount={
+          targetAmount
+        }
         progress={progress}
         remainingAmount={
           remainingAmount
@@ -831,9 +1031,15 @@ export default function CircleView({
         deadlineStatus={
           deadlineStatus
         }
-        isCompleted={isCompleted}
-        isExpired={isExpired}
-        isCancelled={isCancelled}
+        isCompleted={
+          isCompleted
+        }
+        isExpired={
+          isExpired
+        }
+        isCancelled={
+          isCancelled
+        }
         language={language}
         t={t.circle}
       />
@@ -841,7 +1047,10 @@ export default function CircleView({
       <div className="mt-4 grid grid-cols-2 gap-3">
         <StatCard
           icon={<PeopleIcon />}
-          label={t.circle.contributors}
+          label={
+            t.circle
+              .contributors
+          }
           value={formatNumber(
             contributorCount,
             language,
@@ -849,12 +1058,19 @@ export default function CircleView({
         />
 
         <StatCard
-          icon={<CalendarIcon />}
-          label={t.circle.deadline}
-          value={deadlineLabel}
+          icon={
+            <CalendarIcon />
+          }
+          label={
+            t.circle.deadline
+          }
+          value={
+            deadlineLabel
+          }
         />
       </div>
 
+      {/* Share Circle */}
       <button
         type="button"
         onClick={() =>
@@ -869,6 +1085,38 @@ export default function CircleView({
           : t.circle.shareCircle}
       </button>
 
+      {/* Circle ID */}
+      <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+              {t.circle.circleId}
+            </p>
+
+            <p className="mt-1 truncate font-mono text-xs font-bold text-slate-700">
+              {circle.id}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() =>
+              void handleCopyCircleId()
+            }
+            className="flex shrink-0 items-center gap-1.5 rounded-xl bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-sm ring-1 ring-slate-200 transition active:scale-[0.98] hover:text-emerald-700"
+          >
+            <CopyIcon />
+
+            {circleIdCopied
+              ? t.circle
+                  .circleIdCopied
+              : t.circle
+                  .copyCircleId}
+          </button>
+        </div>
+      </div>
+
+      {/* About Circle */}
       <div className="mt-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
         <h2 className="text-base font-bold text-slate-900">
           {t.circle.aboutCircle}
@@ -876,7 +1124,9 @@ export default function CircleView({
 
         <div className="mt-4 space-y-4">
           <InfoRow
-            label={t.circle.creator}
+            label={
+              t.circle.creator
+            }
             value={
               circle.creatorUsername
                 ? `@${circle.creatorUsername}`
@@ -890,7 +1140,9 @@ export default function CircleView({
           />
 
           <InfoRow
-            label={t.circle.goalOwner}
+            label={
+              t.circle.goalOwner
+            }
             value={
               circle.recipientUsername
                 ? `@${circle.recipientUsername}`
@@ -915,7 +1167,9 @@ export default function CircleView({
           />
 
           <InfoRow
-            label={t.circle.created}
+            label={
+              t.circle.created
+            }
             value={formatDate(
               circle.createdAt,
               language,
@@ -924,16 +1178,22 @@ export default function CircleView({
         </div>
       </div>
 
+      {/* Contributors */}
       <div className="mt-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-base font-bold text-slate-900">
-              {t.circle.contributors}
+              {
+                t.circle
+                  .contributors
+              }
             </h2>
 
             <p className="mt-1 text-sm leading-6 text-slate-500">
-              {t.circle
-                .contributorsDescription}
+              {
+                t.circle
+                  .contributorsDescription
+              }
             </p>
           </div>
 
@@ -942,10 +1202,14 @@ export default function CircleView({
           )}
         </div>
 
-        {contributions.length === 0 ? (
+        {contributions.length ===
+        0 ? (
           <div className="mt-5 rounded-2xl bg-slate-50 p-4 text-center">
             <p className="text-sm font-semibold text-slate-700">
-              {t.circle.noContributors}
+              {
+                t.circle
+                  .noContributors
+              }
             </p>
 
             <p className="mt-1 text-xs leading-5 text-slate-500">
@@ -965,6 +1229,7 @@ export default function CircleView({
         )}
       </div>
 
+      {/* Contribution History */}
       <div className="mt-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
         <div>
           <h2 className="text-base font-bold text-slate-900">
@@ -982,10 +1247,14 @@ export default function CircleView({
           </p>
         </div>
 
-        {contributions.length === 0 ? (
+        {contributions.length ===
+        0 ? (
           <div className="mt-5 rounded-2xl bg-slate-50 p-4 text-center">
             <p className="text-sm font-semibold text-slate-700">
-              {t.circle.noContributions}
+              {
+                t.circle
+                  .noContributions
+              }
             </p>
 
             <p className="mt-1 text-xs leading-5 text-slate-500">
@@ -1006,6 +1275,7 @@ export default function CircleView({
         )}
       </div>
 
+      {/* Creator Controls */}
       {isCreator &&
         !isCompleted &&
         !isExpired &&
@@ -1021,8 +1291,10 @@ export default function CircleView({
 
             <div className="mt-4 rounded-2xl bg-white/80 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                {t.circle
-                  .fixedCommitment}
+                {
+                  t.circle
+                    .fixedCommitment
+                }
               </p>
 
               <p className="mt-1 text-lg font-bold text-slate-900">
@@ -1033,19 +1305,26 @@ export default function CircleView({
               </p>
 
               <p className="mt-1 text-xs leading-5 text-slate-500">
-                {t.circle.cannotChange}
+                {
+                  t.circle
+                    .cannotChange
+                }
               </p>
             </div>
 
             <button
               type="button"
               onClick={() => {
-                setDeadlineError('')
+                setDeadlineError(
+                  '',
+                )
+
                 setNewDeadline(
                   toDateTimeLocalMin(
                     circle.deadline,
                   ) ?? '',
                 )
+
                 setShowDeadlineModal(
                   true,
                 )
@@ -1053,7 +1332,10 @@ export default function CircleView({
               className="mt-4 flex w-full items-center justify-between rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-left text-sm font-bold text-emerald-800"
             >
               <span>
-                {t.circle.extendDeadline}
+                {
+                  t.circle
+                    .extendDeadline
+                }
               </span>
 
               <ChevronIcon />
@@ -1069,14 +1351,20 @@ export default function CircleView({
             <button
               type="button"
               onClick={() => {
-                setCancelError('')
+                setCancelError(
+                  '',
+                )
+
                 setShowCancelConfirm(
                   true,
                 )
               }}
               className="mt-4 w-full rounded-2xl border border-red-200 bg-white px-4 py-3 text-sm font-bold text-red-700"
             >
-              {t.circle.cancelCircle}
+              {
+                t.circle
+                  .cancelCircle
+              }
             </button>
 
             <p className="mt-2 text-xs leading-5 text-red-600">
@@ -1088,12 +1376,16 @@ export default function CircleView({
           </div>
         )}
 
+      {/* Cancel Confirmation */}
       {showCancelConfirm && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/40 p-4 sm:items-center">
           <div className="w-full max-w-md rounded-3xl bg-white p-5 shadow-xl">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-bold text-slate-900">
-                {t.circle.cancelConfirm}
+                {
+                  t.circle
+                    .cancelConfirm
+                }
               </h2>
 
               <button
@@ -1110,7 +1402,10 @@ export default function CircleView({
             </div>
 
             <p className="mt-3 text-sm leading-6 text-slate-600">
-              {t.circle.cancelWarning}
+              {
+                t.circle
+                  .cancelWarning
+              }
             </p>
 
             {cancelError && (
@@ -1132,7 +1427,10 @@ export default function CircleView({
                 }
                 className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-700 disabled:opacity-50"
               >
-                {t.circle.keepCircle}
+                {
+                  t.circle
+                    .keepCircle
+                }
               </button>
 
               <button
@@ -1146,21 +1444,27 @@ export default function CircleView({
                 className="rounded-2xl bg-red-600 px-4 py-3 text-sm font-bold text-white disabled:opacity-50"
               >
                 {cancellingCircle
-                  ? t.circle.cancelling
-                  : t.circle.cancelCircle}
+                  ? t.circle
+                      .cancelling
+                  : t.circle
+                      .cancelCircle}
               </button>
             </div>
           </div>
         </div>
       )}
 
+      {/* Deadline Modal */}
       {showDeadlineModal && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/40 p-4 sm:items-center">
           <div className="w-full max-w-md rounded-3xl bg-white p-5 shadow-xl">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-bold text-slate-900">
-                  {t.circle.giveMoreTime}
+                  {
+                    t.circle
+                      .giveMoreTime
+                  }
                 </h2>
 
                 <p className="mt-1 text-xs text-slate-500">
@@ -1174,7 +1478,10 @@ export default function CircleView({
               <button
                 type="button"
                 onClick={() => {
-                  setDeadlineError('')
+                  setDeadlineError(
+                    '',
+                  )
+
                   setShowDeadlineModal(
                     false,
                   )
@@ -1187,7 +1494,10 @@ export default function CircleView({
 
             <label className="mt-5 block">
               <span className="text-sm font-bold text-slate-700">
-                {t.circle.newDeadline}
+                {
+                  t.circle
+                    .newDeadline
+                }
               </span>
 
               <input
@@ -1215,7 +1525,10 @@ export default function CircleView({
               <button
                 type="button"
                 onClick={() => {
-                  setDeadlineError('')
+                  setDeadlineError(
+                    '',
+                  )
+
                   setShowDeadlineModal(
                     false,
                   )
@@ -1225,7 +1538,10 @@ export default function CircleView({
                 }
                 className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-700 disabled:opacity-50"
               >
-                {t.circle.closeDeadlineEditor}
+                {
+                  t.circle
+                    .closeDeadlineEditor
+                }
               </button>
 
               <button
@@ -1250,6 +1566,7 @@ export default function CircleView({
         </div>
       )}
 
+      {/* Contribution / Circle Status */}
       <div className="mt-5">
         {isCompleted ? (
           <CompletedState
@@ -1289,7 +1606,8 @@ export default function CircleView({
                     )}`
                   : t.circle
                       .creatorCommitmentUnavailable
-                : remainingAmount <= 0
+                : remainingAmount <=
+                    0
                   ? t.circle
                       .goalFullyFunded
                   : t.circle
@@ -1373,7 +1691,9 @@ function GoalHeader({
   isExpired: boolean
   isCancelled: boolean
   language: string
-  t: ReturnType<typeof useLanguage>['t']['circle']
+  t: ReturnType<
+    typeof useLanguage
+  >['t']['circle']
 }) {
   const status =
     isCompleted
@@ -1475,7 +1795,10 @@ function GoalHeader({
         </div>
 
         <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-300">
-          <span>{deadlineStatus.icon}</span>
+          <span>
+            {deadlineStatus.icon}
+          </span>
+
           {deadlineStatus.label}
         </span>
       </div>
@@ -1607,14 +1930,18 @@ function ContributionHistory({
 }: {
   contributions: CircleContribution[]
   language: string
-  t: ReturnType<typeof useLanguage>['t']['circle']
+  t: ReturnType<
+    typeof useLanguage
+  >['t']['circle']
 }) {
   return (
     <div className="mt-5 space-y-3">
       {contributions.map(
         (contribution) => (
           <div
-            key={contribution._id}
+            key={
+              contribution._id
+            }
             className="rounded-2xl border border-slate-100 bg-slate-50 p-4"
           >
             <div className="flex items-start justify-between gap-4">
@@ -1640,7 +1967,8 @@ function ContributionHistory({
                 {formatNim(
                   Number(
                     contribution.amount,
-                  ) / 100_000,
+                  ) /
+                    100_000,
                   language,
                 )}
               </p>
@@ -1670,7 +1998,9 @@ function ContributionHistory({
 function CompletedState({
   t,
 }: {
-  t: ReturnType<typeof useLanguage>['t']['circle']
+  t: ReturnType<
+    typeof useLanguage
+  >['t']['circle']
 }) {
   return (
     <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-5 text-center">
@@ -1683,7 +2013,9 @@ function CompletedState({
       </h2>
 
       <p className="mt-2 text-sm leading-6 text-emerald-800">
-        {t.goalReachedDescription}
+        {
+          t.goalReachedDescription
+        }
       </p>
     </div>
   )
@@ -1692,7 +2024,9 @@ function CompletedState({
 function ExpiredState({
   t,
 }: {
-  t: ReturnType<typeof useLanguage>['t']['circle']
+  t: ReturnType<
+    typeof useLanguage
+  >['t']['circle']
 }) {
   return (
     <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5 text-center">
@@ -1705,7 +2039,9 @@ function ExpiredState({
       </h2>
 
       <p className="mt-2 text-sm leading-6 text-amber-800">
-        {t.circleExpiredDescription}
+        {
+          t.circleExpiredDescription
+        }
       </p>
     </div>
   )
@@ -1714,7 +2050,9 @@ function ExpiredState({
 function CancelledState({
   t,
 }: {
-  t: ReturnType<typeof useLanguage>['t']['circle']
+  t: ReturnType<
+    typeof useLanguage
+  >['t']['circle']
 }) {
   return (
     <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 text-center">
@@ -1727,7 +2065,9 @@ function CancelledState({
       </h2>
 
       <p className="mt-2 text-sm leading-6 text-slate-600">
-        {t.circleCancelledDescription}
+        {
+          t.circleCancelledDescription
+        }
       </p>
     </div>
   )
@@ -1769,6 +2109,7 @@ function PeopleIcon() {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+
       <circle
         cx="9"
         cy="7"
@@ -1776,6 +2117,7 @@ function PeopleIcon() {
         stroke="currentColor"
         strokeWidth="2"
       />
+
       <path
         d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"
         stroke="currentColor"
@@ -1805,6 +2147,7 @@ function CalendarIcon() {
         stroke="currentColor"
         strokeWidth="2"
       />
+
       <path
         d="M16 2v4M8 2v4M3 10h18"
         stroke="currentColor"
@@ -1831,6 +2174,7 @@ function ShareIcon() {
         stroke="currentColor"
         strokeWidth="2"
       />
+
       <circle
         cx="6"
         cy="12"
@@ -1838,6 +2182,7 @@ function ShareIcon() {
         stroke="currentColor"
         strokeWidth="2"
       />
+
       <circle
         cx="18"
         cy="19"
@@ -1845,8 +2190,38 @@ function ShareIcon() {
         stroke="currentColor"
         strokeWidth="2"
       />
+
       <path
         d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+function CopyIcon() {
+  return (
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <rect
+        x="9"
+        y="9"
+        width="11"
+        height="11"
+        rx="2"
+        stroke="currentColor"
+        strokeWidth="2"
+      />
+
+      <path
+        d="M15 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h3"
         stroke="currentColor"
         strokeWidth="2"
         strokeLinecap="round"
@@ -1912,6 +2287,7 @@ function SpinnerIcon() {
         strokeWidth="3"
         opacity="0.25"
       />
+
       <path
         d="M21 12a9 9 0 0 0-9-9"
         stroke="currentColor"

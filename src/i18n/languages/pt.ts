@@ -8,6 +8,97 @@ export const pt = {
     profile: 'Perfil',
   },
 
+  app: {
+    unableToLoadProfile:
+      'Não foi possível carregar o seu perfil',
+    tryAgain: 'Tentar novamente',
+    loadingCircles:
+      'A carregar os seus círculos...',
+  
+    errors: {
+      network:
+        'Não foi possível contactar o servidor NimCircle. Verifique a sua ligação e tente novamente.',
+      invalidResponse:
+        'O servidor devolveu uma resposta inválida. Tente novamente.',
+      walletUsernameRequired:
+        'O endereço da carteira e o nome de utilizador são obrigatórios.',
+      usernameLength:
+        'O seu nome de utilizador deve ter entre 3 e 20 caracteres.',
+      usernameFormat:
+        'O nome de utilizador só pode conter letras, números e sublinhados.',
+      displayNameLength:
+        'O seu nome de apresentação deve ter no máximo 30 caracteres.',
+      profileExists:
+        'Já existe um perfil para esta carteira.',
+      usernameTaken:
+        'Esse nome de utilizador já está a ser utilizado.',
+      userAlreadyExists:
+        'Já existe um perfil com este endereço de carteira ou nome de utilizador.',
+      userNotFound:
+        'Utilizador não encontrado.',
+      noValidUpdateFields:
+        'Não foram fornecidos campos de perfil válidos.',
+      circleFieldsRequired:
+        'Faltam algumas informações obrigatórias do Circle.',
+      creatorNotFound:
+        'Não foi possível encontrar o criador do Circle.',
+      creatorWalletMismatch:
+        'A carteira do criador não corresponde ao seu perfil.',
+      goalOwnerNotFound:
+        'Não foi possível encontrar o proprietário do objetivo.',
+      goalOwnerWalletMismatch:
+        'A carteira do proprietário do objetivo não corresponde ao seu perfil.',
+      targetAmountInvalid:
+        'O valor do objetivo é inválido.',
+      creatorCommitmentInvalid:
+        'O compromisso do criador é inválido.',
+      creatorCommitmentTooLarge:
+        'O compromisso do criador não pode ultrapassar o objetivo do Circle.',
+      invalidDeadline:
+        'O prazo é inválido.',
+      deadlineNotFuture:
+        'O prazo deve estar no futuro.',
+      circleAlreadyExists:
+        'Já existe um Circle com este ID.',
+      circleNotFound:
+        'Circle não encontrado.',
+      walletRequired:
+        'É necessário um endereço de carteira.',
+      invalidStatusChange:
+        'A única alteração manual de estado permitida é o cancelamento.',
+      onlyCreatorCanCancel:
+        'Apenas o criador do Circle pode cancelá-lo.',
+      circleStatusLocked:
+        'O estado deste Circle já não pode ser alterado.',
+      onlyCreatorCanExtend:
+        'Apenas o criador do Circle pode prolongar o prazo.',
+      circleDeadlineLocked:
+        'O prazo deste Circle já não pode ser prolongado.',
+      deadlineRequired:
+        'É necessário um prazo.',
+      deadlineMustBeLater:
+        'O novo prazo deve ser posterior ao prazo atual.',
+      transactionHashRequired:
+        'É necessário um hash de transação.',
+      transactionNotFound:
+        'A transação não foi encontrada no histórico da blockchain Nimiq.',
+      transactionNotConfirmed:
+        'A transação ainda não foi confirmada na blockchain Nimiq.',
+      transactionFailed:
+        'A transação Nimiq falhou.',
+      recipientMismatch:
+        'O destinatário da transação não corresponde ao proprietário do objetivo do Circle.',
+      amountMismatch:
+        'O valor da transação não corresponde ao valor da contribuição.',
+      memoMismatch:
+        'O memo da transação não corresponde ao Circle.',
+      senderMismatch:
+        'O remetente da transação não corresponde à carteira do contribuidor.',
+      contributionNotFound:
+        'Contribuição não encontrada.',
+    },
+  },
+
   home: {
     welcomeBack: 'Bem-vindo de volta',
     description: 'Poupe juntos. Alcancem objetivos juntos.',
@@ -69,6 +160,15 @@ export const pt = {
     deadline: 'Prazo',
     goalOwner: 'Proprietário do objetivo',
     openCircle: 'Abrir Círculo',
+    findCircle: 'Encontrar um círculo',
+    findCircleDescription:
+      'Insira um ID de círculo compartilhado com você para abrir o círculo.',
+    circleIdPlaceholder: 'Insira o ID do círculo',
+    search: 'Pesquisar',
+    searching: 'Pesquisando...',
+    circleIdRequired: 'Insira um ID de círculo.',
+    circleNotFound:
+      'Circle não encontrado.',
   },
 
   createCircle: {
@@ -194,7 +294,7 @@ export const pt = {
     deadlineUnavailable: 'Prazo indisponível',
     deadlinePassed: 'Prazo ultrapassado',
     lessThanDay: 'Menos de um dia restante',
-    daysLeft: 'dias restantes',
+    daysLeft: '{count} dias restantes',
     goalReachedDescription:
       'Este Círculo atingiu o seu objetivo de poupança.',
     circleExpired: 'Círculo expirado',
@@ -216,6 +316,9 @@ export const pt = {
       'O criador não definiu um compromisso para este Círculo.',
     contributorDescription:
       'Obrigado por ajudar este Círculo a alcançar o seu objetivo.',
+    circleId: 'ID do círculo',
+    copyCircleId: 'Copiar',
+    circleIdCopied: 'Copiado',
   },
 
   profile: {
@@ -349,31 +452,41 @@ export const pt = {
 
   profileSetup: {
     eyebrow: 'NimCircle',
-    title: 'Cria o teu perfil',
+    title: 'Crie o seu perfil',
     description:
-      'Escolhe um nome de utilizador e um nome que os membros do teu círculo possam reconhecer.',
+      'Escolha um nome de utilizador e um nome que os membros do seu círculo possam reconhecer.',
     username: 'Nome de utilizador',
     usernamePlaceholder: 'kaos',
     usernameHint:
-      '3–20 caracteres usando letras, números ou underscores.',
-    displayName: 'Nome apresentado',
-    displayNamePlaceholder: 'ex.: Kaos',
-    connectedWallet: 'Carteira ligada',
+      '3-20 caracteres usando letras, números ou underscores.',
+    displayName: 'Nome de apresentação',
+    displayNamePlaceholder: 'ex. Kaos',
+    connectedWallet: 'Carteira conectada',
     createProfile: 'Criar perfil',
+  
     pleaseChooseUsername:
-      'Escolhe um nome de utilizador.',
+      'Escolha um nome de utilizador.',
     usernameTooShort:
-      'O teu nome de utilizador deve ter pelo menos 3 caracteres.',
+      'O seu nome de utilizador deve ter pelo menos 3 caracteres.',
     usernameTooLong:
-      'O teu nome de utilizador deve ter 20 caracteres ou menos.',
+      'O seu nome de utilizador deve ter no máximo 20 caracteres.',
     usernameInvalid:
       'O nome de utilizador só pode conter letras, números e underscores.',
     pleaseEnterDisplayName:
-      'Introduz um nome apresentado.',
+      'Introduza um nome de apresentação.',
     displayNameTooShort:
-      'O teu nome apresentado deve ter pelo menos 2 caracteres.',
+      'O seu nome de apresentação deve ter pelo menos 2 caracteres.',
     displayNameTooLong:
-      'O teu nome apresentado deve ter 30 caracteres ou menos.',
+      'O seu nome de apresentação deve ter no máximo 30 caracteres.',
+  
+    usernameTaken:
+      'Esse nome de utilizador já está em uso.',
+    profileExists:
+      'Já existe um perfil para esta carteira.',
+    userAlreadyExists:
+      'Já existe um perfil com este endereço de carteira ou nome de utilizador.',
+    unableToCreate:
+      'Não foi possível criar o seu perfil. Tente novamente.',
   },
 
   language: {

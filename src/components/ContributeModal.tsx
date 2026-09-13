@@ -3,6 +3,7 @@ import {
   apiConfirmContribution,
   apiCreateContribution,
   nimToLuna,
+  ApiRequestError,
 } from '../lib/api'
 import {
   PAYMENT_ERROR_CODES,
@@ -179,22 +180,18 @@ function getErrorMessage(
   return translations.processingError
 }
 
-function isTransactionNotFoundError(
+function isRetryableConfirmationError(
   error: unknown,
-  translations: ErrorTranslations,
 ): boolean {
-  const message =
-    getErrorMessage(
-      error,
-      translations,
-    ).toLowerCase()
+  if (
+    error instanceof ApiRequestError
+  ) {
+    return (
+      error.retryable === true
+    )
+  }
 
-  return (
-    message.includes(
-      'transaction not found',
-    ) ||
-    message.includes('not found')
-  )
+  return false
 }
 
 function wait(
@@ -228,13 +225,32 @@ async function confirmContributionWithRetry(
       return
     } catch (confirmationError) {
       const shouldRetry =
-        isTransactionNotFoundError(
+        isRetryableConfirmationError(
           confirmationError,
-          translations,
         )
 
       const hasAttemptsRemaining =
         attempt < maxAttempts
+
+      console.warn(
+        '[NimCircle] Contribution confirmation attempt failed:',
+        {
+          attempt,
+          maxAttempts,
+          code:
+            confirmationError instanceof
+            ApiRequestError
+              ? confirmationError.code
+              : null,
+          retryable:
+            confirmationError instanceof
+            ApiRequestError
+              ? confirmationError.retryable
+              : false,
+          error:
+            confirmationError,
+        },
+      )
 
       if (
         !shouldRetry ||
@@ -286,8 +302,10 @@ export default function ContributeModal({
   const [transactionHash, setTransactionHash] =
     useState<string | null>(null)
 
-  /*const [paymentSent, setPaymentSent] =
-    useState(false)*/
+  const [
+    transactionWarningHash,
+    setTransactionWarningHash,
+  ] = useState<string | null>(null)
 
   const parsedAmount = Number(amount)
 
@@ -336,8 +354,8 @@ export default function ContributeModal({
 
   async function handleContribute() {
     setError(null)
-    //setPaymentSent(false)
     setTransactionHash(null)
+    setTransactionWarningHash(null)
 
     if (
       !Number.isFinite(parsedAmount) ||
@@ -407,13 +425,13 @@ export default function ContributeModal({
     setIsSubmitting(true)
 
     /*
-     * Keep this local variable as the source
-     * of truth for the current payment attempt.
+     * This local variable is the source of truth
+     * for the current payment attempt.
      *
-     * React state updates such as setPaymentSent()
-     * are asynchronous, so the state value may still
-     * be false if an error occurs immediately after
-     * the transaction is sent.
+     * React state updates are asynchronous, so
+     * transactionHash state cannot safely be used
+     * to determine whether Nimiq Pay already sent
+     * the transaction.
      */
     let sentTransactionHash:
       string | null = null
@@ -443,14 +461,16 @@ export default function ContributeModal({
         payment.transactionHash
 
       /*
-       * The transaction hash is the reliable
-       * indicator that Nimiq Pay accepted and
-       * returned the transaction.
+       * Once Nimiq Pay returns a transaction hash,
+       * the blockchain payment has been submitted.
+       *
+       * Backend recording and confirmation happen
+       * afterward and may temporarily lag behind
+       * the actual payment.
        */
       sentTransactionHash = hash
 
       setTransactionHash(hash)
-      //setPaymentSent(true)
 
       await apiCreateContribution({
         circleId,
@@ -478,8 +498,6 @@ export default function ContributeModal({
       )
 
       setSuccess(true)
-
-      //onSuccess()
     } catch (requestError) {
       console.error(
         '[NimCircle] Contribution failed:',
@@ -493,19 +511,21 @@ export default function ContributeModal({
         )
 
       /*
-       * If we already received a transaction hash,
-       * the payment was sent even if the backend
-       * creation or confirmation failed afterward.
+       * If Nimiq Pay already returned a transaction
+       * hash, the payment was submitted even if
+       * backend recording or confirmation failed.
        *
-       * Do not rely on paymentSent here because
-       * React state updates are asynchronous.
+       * Keep the transaction hash visible so the
+       * user knows the payment was sent.
        */
       if (sentTransactionHash) {
         setError(
-          `${t.contributeModal.transactionSentWarning} ${t.contributeModal.transactionLabel.replace(
-            '{hash}',
-            sentTransactionHash,
-          )}`,
+          t.contributeModal
+            .transactionSentWarning,
+        )
+
+        setTransactionWarningHash(
+          sentTransactionHash,
         )
       } else {
         setError(message)
@@ -644,6 +664,9 @@ export default function ContributeModal({
                   )
 
                   setError(null)
+                  setTransactionWarningHash(
+                    null,
+                  )
                 }}
                 readOnly={isFixedAmount}
                 disabled={isSubmitting}
@@ -772,9 +795,18 @@ export default function ContributeModal({
                   </svg>
                 </div>
 
-                <p className="min-w-0 text-sm leading-5 text-red-700">
-                  {error}
-                </p>
+                <div className="min-w-0 text-sm leading-5 text-red-700">
+                  <p>{error}</p>
+
+                  {transactionWarningHash && (
+                    <p className="mt-2 break-all font-mono text-xs leading-5">
+                      {t.contributeModal.transactionLabel.replace(
+                        '{hash}',
+                        transactionWarningHash,
+                      )}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           )}
