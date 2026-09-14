@@ -537,6 +537,10 @@ export default function CircleView({
   const isCreator =
     normalizedCurrentAddress !== '' &&
     normalizedCurrentAddress === normalizedCreatorAddress
+
+  const isGoalOwner =
+    normalizedCurrentAddress !== '' &&
+    normalizedCurrentAddress === normalizedRecipientAddress
   
   const isFundraisingCircle =
     circle !== null &&
@@ -600,6 +604,7 @@ export default function CircleView({
     circle !== null &&
     circle.status === 'active' &&
     remainingAmount > 0 &&
+    !isGoalOwner &&
     (!isCreator || canCreatorContribute)
 
   const confirmedRaisedAmount =

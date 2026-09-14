@@ -4,7 +4,9 @@
 
 NimCircle is a Nimiq Pay Mini App for creating and managing shared savings goals with NIM.
 
-A creator sets a goal, target amount, deadline, goal owner, and creator commitment. The Circle can then be shared with other people, who contribute NIM through Nimiq Pay. NimCircle verifies the resulting blockchain transactions before counting them toward the Circle's progress.
+A creator sets a goal, target amount, deadline, and goal owner. Circles can be personal goals, where the creator is also the goal owner, or fundraising goals, where the creator organizes a goal for another wallet. Fundraising Circles can also include a creator commitment.
+
+The Circle can then be shared with other people, who contribute NIM through Nimiq Pay. NimCircle verifies the resulting blockchain transactions before counting them toward the Circle's progress.
 
 Instead of coordinating shared savings through group chats, spreadsheets, screenshots, or manual calculations, NimCircle gives everyone a single Circle with a clear target, contribution history, deadline, status, and verifiable on-chain activity.
 
@@ -45,7 +47,14 @@ Instead of coordinating shared savings through group chats, spreadsheets, screen
 
 NimCircle is a shared savings and goal-tracking application built around NIM.
 
-A **Circle** represents a shared financial goal. A creator defines what the group is saving for, sets a target amount and deadline, specifies the wallet that should receive contributions, and records a creator commitment.
+A **Circle** represents a shared financial goal. A creator defines what the group is saving for, sets a target amount and deadline, and specifies the wallet that should receive contributions.
+
+NimCircle supports two Circle types:
+
+- **Personal Circles:** the creator is also the goal owner. The creator does not contribute to the Circle.
+- **Fundraising Circles:** the creator organizes the goal for another wallet and can specify a creator commitment.
+
+The goal owner cannot contribute to their own Circle.
 
 Other participants can find the Circle, open it, and contribute NIM.
 
@@ -102,19 +111,12 @@ NimCircle turns a shared financial goal into a structured Circle.
 
 A Circle contains:
 
-* Name
+* Circle name
 * Description
 * Target amount
 * Deadline
-* Creator
 * Goal owner
-* Creator commitment
-* Contribution history
-* Contributor information
-* Current status
-* Calculated progress
-* Remaining amount
-* Contributor count
+* Creator commitment for fundraising Circles
 
 Participants interact with Nimiq Pay to send NIM, while the NimCircle backend independently verifies the resulting blockchain transaction.
 
@@ -145,6 +147,10 @@ The creator provides information such as:
 * Goal owner
 * Creator commitment
 
+Personal Circles use the creator's wallet as the goal owner and do not require a creator commitment.
+
+For Fundraising Circles, the creator and goal owner are different wallets, and the creator must provide a positive commitment.
+
 Amounts are represented internally in **Luna**, Nimiq's smallest unit.
 
 NimCircle validates Circle data before sending it to the backend.
@@ -167,7 +173,11 @@ This avoids requiring contributors to search through existing Circles or know th
 
 ## 4. Contributors send NIM
 
-A contributor chooses how much NIM to contribute.
+An eligible participant chooses how much NIM to contribute.
+
+For a Fundraising Circle, the creator can contribute toward their declared commitment. Other eligible participants can make normal contributions.
+
+The goal owner cannot contribute to the Circle.
 
 NimCircle creates a transaction using the Nimiq provider and passes the request to Nimiq Pay's native transaction approval experience.
 
@@ -242,9 +252,23 @@ Contributors can use the **Find a Circle** flow to open a specific Circle.
 
 A Circle distinguishes between its creator and the wallet designated to receive the goal's contributions.
 
+The goal owner is always the recipient of Circle contributions and cannot contribute to their own Circle.
+
+When the creator and goal owner are the same wallet, the Circle is treated as a Personal Circle.
+
+When they are different wallets, the Circle is treated as a Fundraising Circle.
+
 ## Creator commitment
 
-Creators specify a commitment amount when creating a Circle. This commitment is stored as part of the Circle configuration.
+Fundraising Circle creators specify a commitment amount when creating a Circle. Personal Circles do not require a creator commitment.
+
+The commitment represents the amount the creator intends to contribute toward the goal.
+
+## Goal-owner contribution protection
+
+The wallet designated as the goal owner cannot contribute to its own Circle.
+
+This applies whether the goal owner is also the creator or is a different wallet.
 
 ## Contribution history
 
@@ -377,7 +401,9 @@ import { init } from '@nimiq/mini-app-sdk'
 init({ timeout: 10_000 })
 ```
 
-The provider is used for wallet access, consensus checks, and NIM transaction requests.
+The frontend provider is used for wallet access and NIM transaction requests.
+
+The backend uses Nimiq's blockchain client to independently query and verify contribution transactions before they are confirmed.
 
 ## Provider flow
 
@@ -687,6 +713,7 @@ contributorWallet
 contributorUserId
 recipientWallet
 amount
+contributionType
 transactionHash
 memo
 status
@@ -1105,6 +1132,10 @@ The following flow can be tested:
 13. Confirm that the progress updates.
 14. Test relevant Circle lifecycle actions.
 15. Test the application in the available interface languages.
+16. Verify that the goal owner cannot contribute.
+17. Verify that a creator can contribute to a Fundraising Circle.
+18. Verify that a creator cannot contribute to a Personal Circle.
+19. Verify that another eligible wallet can contribute.
 
 ---
 

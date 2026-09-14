@@ -571,6 +571,40 @@ export function nimToLuna(
   return luna
 }
 
+export function nimToLunaAllowZero(
+  nim: number,
+): number {
+  if (
+    !Number.isFinite(nim) ||
+    nim < 0
+  ) {
+    throw new ApiRequestError(
+      'NIM amount cannot be negative.',
+      {
+        status: 400,
+        code: 'NIM_AMOUNT_INVALID',
+      },
+    )
+  }
+
+  const luna =
+    Math.round(
+      nim * LUNA_PER_NIM,
+    )
+
+  if (!Number.isSafeInteger(luna)) {
+    throw new ApiRequestError(
+      'NIM amount is too large.',
+      {
+        status: 400,
+        code: 'NIM_AMOUNT_TOO_LARGE',
+      },
+    )
+  }
+
+  return luna
+}
+
 export function lunaToNim(
   luna: number,
 ): number {
@@ -1007,7 +1041,7 @@ export async function apiCreateCircle(
               null,
 
             creatorCommitment:
-              nimToLuna(
+              nimToLunaAllowZero(
                 data.creatorCommitment,
               ),
           }),
