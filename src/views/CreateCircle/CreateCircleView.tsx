@@ -248,7 +248,7 @@ export default function CreateCircleView({
   const [
     creatorCommitment,
     setCreatorCommitment,
-  ] = useState('0')
+  ] = useState('')
 
   const [
     error,
@@ -278,7 +278,9 @@ export default function CreateCircleView({
       Number(targetAmount)
 
     const parsedCreatorCommitment =
-      Number(creatorCommitment)
+      creatorIsGoalOwner
+        ? 0
+        : Number(creatorCommitment)
 
     if (!name.trim()) {
       setError(
@@ -299,26 +301,28 @@ export default function CreateCircleView({
       return
     }
 
-    if (
-      !Number.isFinite(
-        parsedCreatorCommitment,
-      ) ||
-      parsedCreatorCommitment < 0
-    ) {
-      setError(
-        t.createCircle.commitmentInvalid,
-      )
-      return
-    }
+    if (!creatorIsGoalOwner) {
+      if (
+        !Number.isFinite(
+          parsedCreatorCommitment,
+        ) ||
+        parsedCreatorCommitment <= 0
+      ) {
+        setError(
+          t.createCircle.commitmentInvalid,
+        )
+        return
+      }
 
-    if (
-      parsedCreatorCommitment >
-      parsedTargetAmount
-    ) {
-      setError(
-        t.createCircle.commitmentTooHigh,
-      )
-      return
+      if (
+        parsedCreatorCommitment >
+        parsedTargetAmount
+      ) {
+        setError(
+          t.createCircle.commitmentTooHigh,
+        )
+        return
+      }
     }
 
     if (!deadline) {
@@ -386,7 +390,7 @@ export default function CreateCircleView({
               t.contributeModal.paymentAmountInvalid,
             )
             return
-    
+
           case 'NIM_AMOUNT_TOO_LARGE':
             setError(
               t.contributeModal.paymentAmountTooLarge,
@@ -394,7 +398,7 @@ export default function CreateCircleView({
             return
         }
       }
-    
+
       setError(
         submitError instanceof Error
           ? submitError.message
@@ -629,25 +633,25 @@ export default function CreateCircleView({
             </div>
           </section>
 
-          {/* Contribution & deadline */}
-          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="mb-5 flex items-center gap-3">
-              <SectionIcon>
-                <CommitmentIcon />
-              </SectionIcon>
+          {/* Creator commitment */}
+          {!creatorIsGoalOwner && (
+            <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="mb-5 flex items-center gap-3">
+                <SectionIcon>
+                  <CommitmentIcon />
+                </SectionIcon>
 
-              <div>
-                <h2 className="text-sm font-bold text-slate-900">
-                  {t.createCircle.creatorCommitment}
-                </h2>
+                <div>
+                  <h2 className="text-sm font-bold text-slate-900">
+                    {t.createCircle.creatorCommitment}
+                  </h2>
 
-                <p className="mt-0.5 text-xs text-slate-500">
-                  {t.createCircle.commitmentDescription}
-                </p>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    {t.createCircle.commitmentDescription}
+                  </p>
+                </div>
               </div>
-            </div>
 
-            <div className="space-y-5">
               <div>
                 <label
                   htmlFor="creator-commitment"
@@ -690,45 +694,53 @@ export default function CreateCircleView({
                       .commitmentDescription
                   }
                 </p>
-
-                {creatorIsGoalOwner && (
-                  <div className="mt-3 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3">
-                    <p className="text-xs leading-5 text-emerald-800">
-                      {
-                        t.createCircle
-                          .personalCommitmentDescription
-                      }
-                    </p>
-                  </div>
-                )}
               </div>
+            </section>
+          )}
+
+          {/* Deadline */}
+          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="mb-5 flex items-center gap-3">
+              <SectionIcon>
+                <CalendarIcon />
+              </SectionIcon>
 
               <div>
-                <label
-                  htmlFor="circle-deadline"
-                  className="mb-2 block text-sm font-semibold text-slate-900"
-                >
+                <h2 className="text-sm font-bold text-slate-900">
                   {t.createCircle.deadline}
-                </label>
+                </h2>
 
-                <div className="relative">
-                  <div className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-                    <CalendarIcon />
-                  </div>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  {t.createCircle.deadline}
+                </p>
+              </div>
+            </div>
 
-                  <input
-                    id="circle-deadline"
-                    type="date"
-                    value={deadline}
-                    onChange={(event) =>
-                      setDeadline(
-                        event.target.value,
-                      )
-                    }
-                    disabled={loading}
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-12 pr-4 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 disabled:bg-slate-100"
-                  />
+            <div>
+              <label
+                htmlFor="circle-deadline"
+                className="mb-2 block text-sm font-semibold text-slate-900"
+              >
+                {t.createCircle.deadline}
+              </label>
+
+              <div className="relative">
+                <div className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                  <CalendarIcon />
                 </div>
+
+                <input
+                  id="circle-deadline"
+                  type="date"
+                  value={deadline}
+                  onChange={(event) =>
+                    setDeadline(
+                      event.target.value,
+                    )
+                  }
+                  disabled={loading}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-12 pr-4 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 disabled:bg-slate-100"
+                />
               </div>
             </div>
           </section>
@@ -761,7 +773,9 @@ export default function CreateCircleView({
             </button>
 
             <p className="mt-3 text-center text-xs leading-5 text-slate-400">
-              {t.createCircle.commitmentDescription}
+              {creatorIsGoalOwner
+                ? t.createCircle.personalCircle
+                : t.createCircle.commitmentDescription}
             </p>
           </div>
         </form>

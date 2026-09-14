@@ -39,6 +39,23 @@ const contributionSchema = new mongoose.Schema(
       min: 1,
     },
 
+    // How the contribution counts toward the creator's commitment.
+    //
+    // "commitment" means the creator explicitly chose for this
+    // payment to count toward their committed amount.
+    //
+    // "normal" means the payment is a regular Circle contribution
+    // and does not increase the creator's commitment total.
+    contributionType: {
+      type: String,
+      enum: [
+        'commitment',
+        'normal',
+      ],
+      default: 'normal',
+      index: true,
+    },
+
     transactionHash: {
       type: String,
       required: true,

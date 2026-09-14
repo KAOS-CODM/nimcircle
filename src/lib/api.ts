@@ -92,35 +92,28 @@ interface ApiCircleStats {
   remainingAmount: number
   progressPercentage: number
   contributorCount: number
+
   creatorCommitment: number
+  creatorContributedAmount: number
+  creatorCommitmentRemaining: number
 }
 
 interface ApiContribution {
   _id: string
   circleId: string
-
   contributorWallet: string
   contributorUserId: string
-
+  contributorUsername: string
   recipientWallet: string
-
   amount: number
-
+  contributionType: 'commitment' | 'normal'
   transactionHash: string
-
   memo: string
-
-  status:
-    | 'pending'
-    | 'confirmed'
-    | 'failed'
-
+  status: 'pending' | 'confirmed' | 'failed'
   confirmedAt: string | null
-
   createdAt: string
   updatedAt: string
 }
-
 interface ApiContributionResponse {
   contribution: ApiContribution
 }
@@ -146,7 +139,7 @@ interface ApiNetworkConfigResponse {
 }
 
 /* -------------------------------------------------------------------------- */
-/* API error                                                                   */
+/* API error                                                                  */
 /* -------------------------------------------------------------------------- */
 
 export class ApiRequestError extends Error {
@@ -247,6 +240,24 @@ export function getLocalizedApiError(
     case 'CREATOR_COMMITMENT_TOO_LARGE':
       return t.app.errors.creatorCommitmentTooLarge
 
+    case 'PERSONAL_CIRCLE_COMMITMENT_INVALID':
+      return t.app.errors.personalCircleCommitmentInvalid
+
+    case 'FUNDRAISING_COMMITMENT_REQUIRED':
+      return t.app.errors.fundraisingCommitmentRequired
+
+    case 'CREATOR_COMMITMENT_TOO_LOW':
+      return t.app.errors.creatorCommitmentTooLow
+
+    case 'ONLY_CREATOR_CAN_UPDATE_COMMITMENT':
+      return t.app.errors.onlyCreatorCanUpdateCommitment
+
+    case 'PERSONAL_CIRCLE_NO_COMMITMENT':
+      return t.app.errors.personalCircleNoCommitment
+
+    case 'COMMITMENT_UPDATE_LOCKED':
+      return t.app.errors.commitmentUpdateLocked
+
     case 'INVALID_DEADLINE':
       return t.app.errors.invalidDeadline
 
@@ -312,6 +323,12 @@ export function getLocalizedApiError(
     case 'CONTRIBUTION_NOT_FOUND':
       return t.app.errors.contributionNotFound
 
+    case 'CREATOR_COMMITMENT_REACHED':
+      return t.app.errors.creatorCommitmentReached
+
+    case 'CREATOR_COMMITMENT_EXCEEDED':
+      return t.app.errors.creatorCommitmentExceeded
+
     default:
       return t.app.errors.invalidResponse
   }
@@ -319,11 +336,13 @@ export function getLocalizedApiError(
 
 /* -------------------------------------------------------------------------- */
 /* Backend error mapping                                                      */
-/*                                                                            */
-/* The backend continues returning its existing English messages.            */
-/* We convert those messages into stable frontend error codes here so the    */
-/* UI can display the currently selected language.                            */
 /* -------------------------------------------------------------------------- */
+
+/*
+ * The backend continues returning its existing English messages.
+ * We convert those messages into stable frontend error codes here so the
+ * UI can display the currently selected language.
+ */
 
 function getApiErrorCode(
   message: string,
@@ -387,8 +406,29 @@ function getApiErrorCode(
     'creatorcommitment must be a non-negative integer amount in luna':
       'CREATOR_COMMITMENT_INVALID',
 
+    'creatorcommitment must be a positive integer amount in luna':
+      'CREATOR_COMMITMENT_INVALID',
+
     'creatorcommitment cannot exceed the circle target':
       'CREATOR_COMMITMENT_TOO_LARGE',
+
+    'personal circles must have a creator commitment of 0':
+      'PERSONAL_CIRCLE_COMMITMENT_INVALID',
+
+    'fundraising circles require a positive creator commitment':
+      'FUNDRAISING_COMMITMENT_REQUIRED',
+
+    'creatorcommitment cannot be lower than the creator\'s existing contributions of':
+      'CREATOR_COMMITMENT_TOO_LOW',
+
+    'only the circle creator can update the creator commitment':
+      'ONLY_CREATOR_CAN_UPDATE_COMMITMENT',
+
+    'personal circles do not have a creator commitment':
+      'PERSONAL_CIRCLE_NO_COMMITMENT',
+
+    'only active circles can update the creator commitment':
+      'COMMITMENT_UPDATE_LOCKED',
 
     'invalid deadline':
       'INVALID_DEADLINE',
@@ -454,6 +494,37 @@ function getApiErrorCode(
 
     'contribution not found':
       'CONTRIBUTION_NOT_FOUND',
+
+    'the creator has reached their commitment for this circle':
+      'CREATOR_COMMITMENT_REACHED',
+
+    'contribution exceeds the creator\'s remaining commitment. maximum contribution is':
+      'CREATOR_COMMITMENT_EXCEEDED',
+  }
+
+  /*
+   * Some messages contain dynamic values,
+   * such as "Maximum contribution is 20 Luna".
+   *
+   * Exact matching therefore cannot handle
+   * those messages. Check the dynamic prefixes
+   * separately.
+   */
+
+  if (
+    normalized.startsWith(
+      'creatorcommitment cannot be lower than the creator\'s existing contributions of',
+    )
+  ) {
+    return 'CREATOR_COMMITMENT_TOO_LOW'
+  }
+
+  if (
+    normalized.startsWith(
+      'contribution exceeds the creator\'s remaining commitment. maximum contribution is',
+    )
+  ) {
+    return 'CREATOR_COMMITMENT_EXCEEDED'
   }
 
   return (
@@ -569,25 +640,6 @@ async function enrichCircleWithUsernames(
   }
 }
 
-async function enrichContributionWithUsername(
-  contribution: ApiContribution,
-): Promise<
-  ApiContribution & {
-    contributorUsername?: string
-  }
-> {
-  const contributorUsername =
-    await apiGetUsername(
-      contribution.contributorWallet,
-    )
-
-  return {
-    ...contribution,
-
-    contributorUsername,
-  }
-}
-
 function mapApiCircle(
   circle: ApiCircle,
 ): Circle {
@@ -629,6 +681,18 @@ function mapApiCircle(
   }
 }
 
+function mapApiContribution(
+  contribution: ApiContribution,
+): ApiContribution {
+  return {
+    ...contribution,
+
+    amount: lunaToNim(
+      contribution.amount,
+    ),
+  }
+}
+
 /* -------------------------------------------------------------------------- */
 /* Generic API request                                                        */
 /* -------------------------------------------------------------------------- */
@@ -637,7 +701,8 @@ async function request<T>(
   endpoint: string,
   options: RequestInit = {},
 ): Promise<T> {
-  const url = `${API_BASE_URL}${endpoint}`
+  const url =
+    `${API_BASE_URL}${endpoint}`
 
   console.log(
     '[NimCircle API] Request:',
@@ -647,13 +712,21 @@ async function request<T>(
   let response: Response
 
   try {
-    response = await fetch(url, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(options.headers || {}),
-      },
-    })
+    response =
+      await fetch(
+        url,
+        {
+          ...options,
+
+          headers: {
+            'Content-Type':
+              'application/json',
+
+            ...(options.headers ||
+              {}),
+          },
+        },
+      )
   } catch (error) {
     throw new ApiRequestError(
       'Network request failed.',
@@ -666,25 +739,35 @@ async function request<T>(
     )
   }
 
-  let data: T | ApiErrorResponse
+  let data:
+    | T
+    | ApiErrorResponse
 
   try {
-    data = await response.json()
+    data =
+      await response.json()
   } catch {
     console.error(
       '[NimCircle API] Invalid JSON response:',
       {
         url,
-        status: response.status,
+        status:
+          response.status,
       },
     )
 
     throw new ApiRequestError(
       'The server returned an invalid response.',
       {
-        status: response.status,
-        code: 'INVALID_RESPONSE',
-        retryable: response.status >= 500,
+        status:
+          response.status,
+
+        code:
+          'INVALID_RESPONSE',
+
+        retryable:
+          response.status >=
+          500,
       },
     )
   }
@@ -693,7 +776,10 @@ async function request<T>(
     '[NimCircle API] Response:',
     {
       url,
-      status: response.status,
+
+      status:
+        response.status,
+
       data,
     },
   )
@@ -709,12 +795,18 @@ async function request<T>(
     throw new ApiRequestError(
       message,
       {
-        status: response.status,
+        status:
+          response.status,
+
         code:
           errorData.code ??
-          getApiErrorCode(message),
+          getApiErrorCode(
+            message,
+          ),
+
         retryable:
-          errorData.retryable === true,
+          errorData.retryable ===
+          true,
       },
     )
   }
@@ -847,7 +939,9 @@ export async function apiUpdateUser(
         method: 'PATCH',
 
         body:
-          JSON.stringify(updates),
+          JSON.stringify(
+            updates,
+          ),
       },
     )
 
@@ -909,7 +1003,8 @@ export async function apiCreateCircle(
               ),
 
             goalOwnerUserId:
-              data.goalOwnerUserId ?? null,
+              data.goalOwnerUserId ??
+              null,
 
             creatorCommitment:
               nimToLuna(
@@ -935,7 +1030,10 @@ export async function apiGetCircle(
     remainingAmount: number
     progressPercentage: number
     contributorCount: number
+
     creatorCommitment: number
+    creatorContributedAmount: number
+    creatorCommitmentRemaining: number
   }
 
   contributions: ApiContribution[]
@@ -954,11 +1052,16 @@ export async function apiGetCircle(
       ),
     )
 
+  /*
+   * The backend already returns contributorUsername
+   * through the populated contributorUserId field.
+   *
+   * Do not make another API request for every
+   * contribution just to retrieve the username.
+   */
   const contributions =
-    await Promise.all(
-      response.contributions.map(
-        enrichContributionWithUsername,
-      ),
+    response.contributions.map(
+      mapApiContribution,
     )
 
   return {
@@ -995,6 +1098,18 @@ export async function apiGetCircle(
         lunaToNim(
           response.stats
             .creatorCommitment,
+        ),
+
+      creatorContributedAmount:
+        lunaToNim(
+          response.stats
+            .creatorContributedAmount,
+        ),
+
+      creatorCommitmentRemaining:
+        lunaToNim(
+          response.stats
+            .creatorCommitmentRemaining,
         ),
     },
 
@@ -1110,6 +1225,39 @@ export async function apiExtendCircleDeadline(
   )
 }
 
+export async function apiUpdateCircleCommitment(
+  circleId: string,
+  creatorCommitment: number,
+  creatorWallet: string,
+): Promise<Circle> {
+  const response =
+    await request<ApiCircleResponse>(
+      `/circles/${encodeURIComponent(
+        circleId,
+      )}/commitment`,
+      {
+        method: 'PATCH',
+
+        body:
+          JSON.stringify({
+            creatorCommitment:
+              nimToLuna(
+                creatorCommitment,
+              ),
+
+            walletAddress:
+              normalizeWalletAddress(
+                creatorWallet,
+              ),
+          }),
+      },
+    )
+
+  return mapApiCircle(
+    response.circle,
+  )
+}
+
 /* -------------------------------------------------------------------------- */
 /* Contributions                                                              */
 /* -------------------------------------------------------------------------- */
@@ -1123,6 +1271,7 @@ export async function apiCreateContribution(
     amount: number
     transactionHash: string
     memo: string
+    contributionType: 'commitment' | 'normal'
   },
 ) {
   return request<ApiContributionResponse>(
@@ -1158,6 +1307,9 @@ export async function apiCreateContribution(
 
           memo:
             data.memo,
+          
+          contributionType:
+            data.contributionType,
         }),
     },
   )
@@ -1175,7 +1327,9 @@ export async function apiGetUserContributions(
       )}`,
     )
 
-  return response.contributions
+  return response.contributions.map(
+    mapApiContribution,
+  )
 }
 
 export async function apiGetCircleContributions(
@@ -1188,18 +1342,28 @@ export async function apiGetCircleContributions(
       )}`,
     )
 
-  return response.contributions
+  return response.contributions.map(
+    mapApiContribution,
+  )
 }
 
 export async function apiConfirmContribution(
   transactionHash: string,
-) {
-  return request<ApiContributionResponse>(
-    `/contributions/${encodeURIComponent(
-      transactionHash,
-    )}/confirm`,
-    {
-      method: 'PATCH',
-    },
-  )
+): Promise<ApiContributionResponse> {
+  const response =
+    await request<ApiContributionResponse>(
+      `/contributions/${encodeURIComponent(
+        transactionHash,
+      )}/confirm`,
+      {
+        method: 'PATCH',
+      },
+    )
+
+  return {
+    contribution:
+      mapApiContribution(
+        response.contribution,
+      ),
+  }
 }

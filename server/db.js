@@ -42,6 +42,19 @@ async function connectDatabase() {
   }
 }
 
+/*
+ * MongoDB connection events
+ */
+
+mongoose.connection.on(
+  'connected',
+  () => {
+    console.log(
+      'MongoDB connection established.',
+    )
+  },
+)
+
 mongoose.connection.on(
   'disconnected',
   () => {
@@ -52,10 +65,11 @@ mongoose.connection.on(
 )
 
 mongoose.connection.on(
-  'connected',
-  () => {
-    console.log(
-      'MongoDB connection restored.',
+  'error',
+  (error) => {
+    console.error(
+      'MongoDB connection error:',
+      error.message,
     )
   },
 )

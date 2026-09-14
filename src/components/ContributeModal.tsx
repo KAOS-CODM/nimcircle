@@ -1,27 +1,64 @@
-import { useState } from 'react'
+import {
+  useState,
+} from 'react'
+
 import {
   apiConfirmContribution,
   apiCreateContribution,
   nimToLuna,
   ApiRequestError,
 } from '../lib/api'
+
 import {
   PAYMENT_ERROR_CODES,
   sendCircleContribution,
 } from '../lib/nimiqPayment'
-import { useLanguage } from '../i18n/useLanguage'
+
+import {
+  useLanguage,
+} from '../i18n/useLanguage'
+
 import NetworkNotice from '../components/NetworkNotice'
 
 interface ContributeModalProps {
   circleId: string
   recipient: string
+
+  /*
+   * Actual amount still available
+   * in the Circle target.
+   */
   remainingAmount: number
+
+  /*
+   * Remaining creator commitment.
+   *
+   * This is NOT a hard payment limit.
+   *
+   * A creator can contribute more than
+   * this amount after choosing whether
+   * to increase their commitment or
+   * continue as a normal contribution.
+   */
+  maxAmountNim?: number
+
   contributorWallet: string
   contributorUserId: string
-  fixedAmountNim?: number
-  network: 'testnet' | 'mainnet' | null
+
+  network:
+    | 'testnet'
+    | 'mainnet'
+    | null
+
   onClose: () => void
   onSuccess: () => void
+  onUpdateCommitment?: () => void
+
+  /*
+   * Called when the creator chooses
+   * to increase their commitment before
+   * making the payment.
+   */
 }
 
 interface ErrorTranslations {
@@ -48,16 +85,17 @@ function getErrorMessage(
     error &&
     typeof error === 'object'
   ) {
-    const errorObject = error as {
-      code?: number | string
-      message?: string
-      type?: string
-      error?: {
+    const errorObject =
+      error as {
         code?: number | string
         message?: string
         type?: string
+        error?: {
+          code?: number | string
+          message?: string
+          type?: string
+        }
       }
-    }
 
     const code =
       errorObject.code ??
@@ -68,10 +106,8 @@ function getErrorMessage(
       errorObject.error?.message ??
       ''
 
-    const paymentErrorTranslations: Record<
-      string,
-      string
-    > = {
+    const paymentErrorTranslations:
+      Record<string, string> = {
       [PAYMENT_ERROR_CODES.NO_ACCOUNT]:
         translations.paymentNoAccount,
 
@@ -188,9 +224,7 @@ function isRetryableConfirmationError(
   if (
     error instanceof ApiRequestError
   ) {
-    return (
-      error.retryable === true
-    )
+    return error.retryable === true
   }
 
   return false
@@ -270,93 +304,180 @@ async function confirmContributionWithRetry(
   )
 }
 
+function formatNim(
+  amount: number,
+  language: string,
+) {
+  return new Intl.NumberFormat(language, {
+    maximumFractionDigits: 4,
+  }).format(amount)
+}
+
 export default function ContributeModal({
   circleId,
   recipient,
   remainingAmount,
+  maxAmountNim,
   contributorWallet,
   contributorUserId,
-  fixedAmountNim,
   network,
   onClose,
   onSuccess,
+  onUpdateCommitment,
 }: ContributeModalProps) {
-  const { t } = useLanguage()
+  const {
+    t,
+    language,
+  } = useLanguage()
 
-
-  const [amount, setAmount] =
-    useState(
-      fixedAmountNim !== undefined
-        ? fixedAmountNim.toString()
-        : '',
+  /*
+   * remainingAmount is the actual payment
+   * limit for this Circle.
+   */
+  const contributionLimit =
+    Math.max(
+      0,
+      remainingAmount,
     )
 
-  const isFixedAmount =
-    fixedAmountNim !== undefined
+  /*
+   * maxAmountNim represents the remaining
+   * creator commitment.
+   *
+   * It is NOT the maximum amount the
+   * creator can send.
+   */
+  const creatorCommitmentRemaining =
+    Number.isFinite(maxAmountNim)
+      ? Math.max(
+          0,
+          Number(maxAmountNim),
+        )
+      : null
 
-  const [isSubmitting, setIsSubmitting] =
-    useState(false)
+  const hasCreatorLimit =
+    creatorCommitmentRemaining !== null
+  
+  const isCreator =
+    creatorCommitmentRemaining !== null
 
-  const [error, setError] =
-    useState<string | null>(null)
+  const [amount, setAmount] =
+    useState('')
 
-  const [success, setSuccess] =
-    useState(false)
+  const [
+    isSubmitting,
+    setIsSubmitting,
+  ] = useState(false)
 
-  const [transactionHash, setTransactionHash] =
-    useState<string | null>(null)
+  const [
+    error,
+    setError,
+  ] = useState<string | null>(null)
+
+  const [
+    success,
+    setSuccess,
+  ] = useState(false)
+
+  const [
+    transactionHash,
+    setTransactionHash,
+  ] = useState<string | null>(null)
 
   const [
     transactionWarningHash,
     setTransactionWarningHash,
   ] = useState<string | null>(null)
 
-  const parsedAmount = Number(amount)
+  const [
+    showCommitmentWarning,
+    setShowCommitmentWarning,
+  ] = useState(false)
+
+  const parsedAmount =
+    Number(amount)
 
   const isValidAmount =
     Number.isFinite(parsedAmount) &&
     parsedAmount > 0 &&
-    parsedAmount <= remainingAmount
+    parsedAmount <=
+      contributionLimit
+
+  const exceedsCreatorCommitment =
+    hasCreatorLimit &&
+    creatorCommitmentRemaining !== null &&
+    parsedAmount >
+      creatorCommitmentRemaining
 
   const errorTranslations = {
     transactionCancelled:
-      t.contributeModal.transactionCancelled,
+      t.contributeModal
+        .transactionCancelled,
 
     serverUnavailable:
-      t.contributeModal.serverUnavailable,
+      t.contributeModal
+        .serverUnavailable,
 
     processingError:
-      t.contributeModal.processingError,
+      t.contributeModal
+        .processingError,
 
     transactionConfirmationFailed:
-      t.contributeModal.transactionConfirmationFailed,
+      t.contributeModal
+        .transactionConfirmationFailed,
 
     paymentNoAccount:
-      t.contributeModal.paymentNoAccount,
+      t.contributeModal
+        .paymentNoAccount,
 
     paymentInvalidRecipient:
-      t.contributeModal.paymentInvalidRecipient,
+      t.contributeModal
+        .paymentInvalidRecipient,
 
     paymentInvalidRecipientFormat:
-      t.contributeModal.paymentInvalidRecipientFormat,
+      t.contributeModal
+        .paymentInvalidRecipientFormat,
 
     paymentMissingCircleId:
-      t.contributeModal.paymentMissingCircleId,
+      t.contributeModal
+        .paymentMissingCircleId,
 
     paymentConsensusNotEstablished:
-      t.contributeModal.paymentConsensusNotEstablished,
+      t.contributeModal
+        .paymentConsensusNotEstablished,
 
     paymentAmountInvalid:
-      t.contributeModal.paymentAmountInvalid,
+      t.contributeModal
+        .paymentAmountInvalid,
 
     paymentAmountTooLarge:
-      t.contributeModal.paymentAmountTooLarge,
+      t.contributeModal
+        .paymentAmountTooLarge,
 
     paymentTransactionFailed:
-      t.contributeModal.paymentTransactionFailed,
+      t.contributeModal
+        .paymentTransactionFailed,
   }
 
-  async function handleContribute() {
+  /*
+   * Send the actual blockchain payment.
+   *
+   * contributionType determines how the
+   * backend classifies this payment:
+   *
+   * commitment:
+   *   Counts toward creator commitment.
+   *
+   * normal:
+   *   Counts toward the Circle target,
+   *   but does not consume creator commitment.
+   */
+  async function handleContribute(
+    contributionType:
+      | 'commitment'
+      | 'normal',
+    bypassCommitmentWarning = false,
+  ) {
     setError(null)
     setTransactionHash(null)
     setTransactionWarningHash(null)
@@ -372,14 +493,34 @@ export default function ContributeModal({
     }
 
     if (
-      parsedAmount > remainingAmount
+      parsedAmount >
+      contributionLimit
     ) {
       setError(
         t.contributeModal.maximumAmount.replace(
           '{amount}',
-          remainingAmount.toLocaleString(),
+          formatNim(
+            contributionLimit,
+            language,
+          ),
         ),
       )
+      return
+    }
+
+    /*
+     * A creator who exceeds their current
+     * commitment must make an explicit
+     * choice before the wallet is opened.
+     *
+     * This prevents a payment from being
+     * sent before its classification is known.
+     */
+    if (
+      !bypassCommitmentWarning &&
+      exceedsCreatorCommitment
+    ) {
+      setShowCommitmentWarning(true)
       return
     }
 
@@ -387,7 +528,9 @@ export default function ContributeModal({
 
     try {
       lunaAmount =
-        nimToLuna(parsedAmount)
+        nimToLuna(
+          parsedAmount,
+        )
     } catch (conversionError) {
       setError(
         getErrorMessage(
@@ -398,20 +541,11 @@ export default function ContributeModal({
       return
     }
 
-    if (lunaAmount < 1) {
-      setError(
-        t.contributeModal.minimumAmount,
-      )
-      return
-    }
-
     if (
-      isFixedAmount &&
-      parsedAmount !== fixedAmountNim
+      lunaAmount < 1
     ) {
       setError(
-        t.contributeModal
-          .creatorCommitmentCannotChange,
+        t.contributeModal.minimumAmount,
       )
       return
     }
@@ -419,7 +553,9 @@ export default function ContributeModal({
     const normalizedRecipient =
       recipient.trim()
 
-    if (!normalizedRecipient) {
+    if (
+      !normalizedRecipient
+    ) {
       setError(
         t.contributeModal.invalidRecipient,
       )
@@ -429,13 +565,10 @@ export default function ContributeModal({
     setIsSubmitting(true)
 
     /*
-     * This local variable is the source of truth
-     * for the current payment attempt.
+     * This local variable is the source
+     * of truth for the current payment.
      *
-     * React state updates are asynchronous, so
-     * transactionHash state cannot safely be used
-     * to determine whether Nimiq Pay already sent
-     * the transaction.
+     * React state is asynchronous.
      */
     let sentTransactionHash:
       string | null = null
@@ -443,15 +576,22 @@ export default function ContributeModal({
     try {
       console.log(
         '[NimCircle] Sending Circle contribution...',
+        {
+          contributionType,
+          amount: parsedAmount,
+        },
       )
 
       const payment =
         await sendCircleContribution({
           recipientWallet:
             normalizedRecipient,
+
           amountNim:
             parsedAmount,
+
           circleId,
+
           expectedSender:
             contributorWallet,
         })
@@ -465,26 +605,41 @@ export default function ContributeModal({
         payment.transactionHash
 
       /*
-       * Once Nimiq Pay returns a transaction hash,
-       * the blockchain payment has been submitted.
-       *
-       * Backend recording and confirmation happen
-       * afterward and may temporarily lag behind
-       * the actual payment.
+       * Once Nimiq Pay returns a hash,
+       * the blockchain payment has been
+       * submitted.
        */
-      sentTransactionHash = hash
+      sentTransactionHash =
+        hash
 
-      setTransactionHash(hash)
+      setTransactionHash(
+        hash,
+      )
 
+      /*
+       * Record the exact classification
+       * selected BEFORE the wallet payment.
+       */
       await apiCreateContribution({
         circleId,
+
         contributorWallet,
+
         contributorUserId,
+
         recipientWallet:
           normalizedRecipient,
-        amount: parsedAmount,
-        transactionHash: hash,
-        memo: payment.memo,
+
+        amount:
+          parsedAmount,
+
+        transactionHash:
+          hash,
+
+        memo:
+          payment.memo,
+
+        contributionType,
       })
 
       console.log(
@@ -515,14 +670,14 @@ export default function ContributeModal({
         )
 
       /*
-       * If Nimiq Pay already returned a transaction
-       * hash, the payment was submitted even if
-       * backend recording or confirmation failed.
-       *
-       * Keep the transaction hash visible so the
-       * user knows the payment was sent.
+       * If Nimiq Pay already returned a
+       * transaction hash, the payment was
+       * submitted even if backend recording
+       * or confirmation failed.
        */
-      if (sentTransactionHash) {
+      if (
+        sentTransactionHash
+      ) {
         setError(
           t.contributeModal
             .transactionSentWarning,
@@ -532,12 +687,21 @@ export default function ContributeModal({
           sentTransactionHash,
         )
       } else {
-        setError(message)
+        setError(
+          message,
+        )
       }
     } finally {
       setIsSubmitting(false)
     }
   }
+
+  /*
+   * The creator can choose to continue the
+   * payment as a normal contribution or close
+   * this modal and update their commitment in
+   * CircleView before paying.
+   */
 
   if (success) {
     return (
@@ -562,9 +726,13 @@ export default function ContributeModal({
           <div className="px-6 pb-6 pt-6">
             <p className="text-center text-sm leading-6 text-slate-500">
               {t.contributeModal
-                .contributionConfirmedDescription.replace(
+                .contributionConfirmedDescription
+                .replace(
                   '{amount}',
-                  parsedAmount.toLocaleString(),
+                  formatNim(
+                    parsedAmount,
+                    language,
+                  ),
                 )}
             </p>
 
@@ -596,10 +764,157 @@ export default function ContributeModal({
     )
   }
 
+  /*
+   * Commitment warning is displayed BEFORE
+   * the wallet payment is requested.
+   */
+  if (
+    showCommitmentWarning
+  ) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/50 px-4 py-4 backdrop-blur-sm sm:items-center">
+        <div className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl">
+          <div className="bg-amber-50 px-6 pb-7 pt-7">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                className="h-6 w-6"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 9v4"
+                />
+
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 16h.01"
+                />
+
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="m10.3 3.9-8.1 14A2 2 0 0 0 3.9 21h16.2a2 2 0 0 0 1.7-3.1l-8.1-14a2 2 0 0 0-3.4 0Z"
+                />
+              </svg>
+            </div>
+
+            <p className="mt-5 text-[10px] font-black uppercase tracking-[0.16em] text-amber-700">
+              {t.circle.creatorCommitment}
+            </p>
+
+            <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">
+              {t.circle.commitmentReached}
+            </h2>
+          </div>
+
+          <div className="px-6 pb-6 pt-6">
+            <p className="text-sm leading-6 text-slate-600">
+              {t.circle.commitmentReachedDescription
+                .replace(
+                  '{amount}',
+                  formatNim(
+                    creatorCommitmentRemaining ?? 0,
+                    language,
+                  ),
+                )}
+            </p>
+
+            <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-xs text-slate-500">
+                  {t.circle.contributionAmount}
+                </span>
+
+                <strong className="text-sm text-slate-900">
+                  {formatNim(
+                    parsedAmount,
+                    language,
+                  )}{' '}
+                  NIM
+                </strong>
+              </div>
+
+              <div className="mt-2 flex items-center justify-between gap-4">
+                <span className="text-xs text-slate-500">
+                  {t.circle.commitmentRemaining}
+                </span>
+
+                <strong className="text-sm text-slate-900">
+                  {formatNim(
+                    creatorCommitmentRemaining ?? 0,
+                    language,
+                  )}{' '}
+                  NIM
+                </strong>
+              </div>
+            </div>
+
+            <div className="mt-5 grid gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCommitmentWarning(false)
+            
+                  void handleContribute(
+                    'normal',
+                    true,
+                  )
+                }}
+                disabled={isSubmitting}
+                className="flex min-h-12 w-full items-center justify-center rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {t.circle.contributeNormally}
+              </button>
+            
+              {onUpdateCommitment && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCommitmentWarning(false)
+                    onClose()
+                    onUpdateCommitment()
+                  }}
+                  disabled={isSubmitting}
+                  className="flex min-h-12 w-full items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-900 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {t.circle.updateCommitment}
+                </button>
+              )}
+            
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCommitmentWarning(false)
+                  setError(null)
+                }}
+                disabled={isSubmitting}
+                className="flex min-h-12 w-full items-center justify-center rounded-2xl px-5 py-3 text-sm font-bold text-slate-500 transition hover:bg-slate-50"
+              >
+                {t.circle.cancel}
+              </button>
+            </div>
+
+            {error && (
+              <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm leading-5 text-red-700">
+                {error}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/50 px-4 py-4 backdrop-blur-sm sm:items-center">
       <div className="max-h-[calc(100vh-2rem)] w-full max-w-md overflow-y-auto rounded-3xl bg-white shadow-2xl">
-        {/* Header */}
         <div className="bg-slate-950 px-6 pb-6 pt-6 text-white">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -608,18 +923,16 @@ export default function ContributeModal({
               </p>
 
               <h2 className="mt-2 text-2xl font-black tracking-tight">
-                {isFixedAmount
-                  ? t.contributeModal
-                      .confirmCreatorCommitment
-                  : t.contributeModal
-                      .contributeNim}
+                {t.contributeModal.contributeNim}
               </h2>
             </div>
 
             <button
               type="button"
               onClick={onClose}
-              disabled={isSubmitting}
+              disabled={
+                isSubmitting
+              }
               aria-label={
                 t.contributeModal.close
               }
@@ -635,18 +948,40 @@ export default function ContributeModal({
             network={network}
             compact
           />
-        
-          {/* Amount */}
+
+          {hasCreatorLimit && (
+            <div className="mt-5 rounded-2xl border border-amber-100 bg-amber-50 p-4">
+              <p className="text-xs font-black uppercase tracking-[0.12em] text-amber-700">
+                {t.circle.creatorCommitment}
+              </p>
+
+              <p className="mt-2 text-sm leading-6 text-amber-900">
+                {t.circle.creatorContributionDescription}
+              </p>
+
+              <div className="mt-3 flex items-center justify-between gap-4">
+                <span className="text-xs text-amber-700">
+                  {t.circle.remaining}
+                </span>
+
+                <strong className="text-sm text-amber-900">
+                  {formatNim(
+                    creatorCommitmentRemaining ?? 0,
+                    language,
+                  )}{' '}
+                  NIM
+                </strong>
+              </div>
+            </div>
+          )}
+
           <div className="mt-5">
             <div className="flex items-center justify-between gap-3">
               <label
                 htmlFor="contribution-amount"
                 className="text-sm font-black text-slate-900"
               >
-                {isFixedAmount
-                  ? t.contributeModal
-                      .creatorCommitment
-                  : t.contributeModal.amount}
+                {t.contributeModal.amount}
               </label>
 
               <span className="rounded-full bg-lime-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-slate-700">
@@ -660,31 +995,25 @@ export default function ContributeModal({
                 type="number"
                 inputMode="decimal"
                 min="0.00001"
-                max={remainingAmount}
+                max={contributionLimit}
                 step="0.00001"
                 value={amount}
                 onChange={(event) => {
-                  if (isFixedAmount) {
-                    return
-                  }
-
                   setAmount(
                     event.target.value,
                   )
 
                   setError(null)
+
                   setTransactionWarningHash(
                     null,
                   )
                 }}
-                readOnly={isFixedAmount}
-                disabled={isSubmitting}
+                disabled={
+                  isSubmitting
+                }
                 placeholder="0"
-                className={`min-h-16 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 pr-20 text-2xl font-black text-slate-900 outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-900/5 ${
-                  isFixedAmount
-                    ? 'cursor-default'
-                    : ''
-                }`}
+                className="min-h-16 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 pr-20 text-2xl font-black text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-900/5 disabled:opacity-60"
               />
 
               <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm font-black text-slate-400">
@@ -694,21 +1023,19 @@ export default function ContributeModal({
 
             <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
               <span>
-                {isFixedAmount
-                  ? t.contributeModal
-                      .fixedCommitment
-                  : t.contributeModal.remaining}
+                {t.contributeModal.remaining}
               </span>
 
               <span className="font-bold text-slate-700">
-                {isFixedAmount
-                  ? `${fixedAmountNim?.toLocaleString()} NIM`
-                  : `${remainingAmount.toLocaleString()} NIM`}
+                {formatNim(
+                  contributionLimit,
+                  language,
+                )}{' '}
+                NIM
               </span>
             </div>
           </div>
 
-          {/* Recipient */}
           <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <div className="flex items-center gap-2">
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white text-slate-600">
@@ -738,7 +1065,6 @@ export default function ContributeModal({
             </p>
           </div>
 
-          {/* Memo */}
           <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <div className="flex items-center gap-2">
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white text-slate-600">
@@ -755,6 +1081,7 @@ export default function ContributeModal({
                     strokeLinejoin="round"
                     d="M5.25 5.25h13.5v13.5H5.25z"
                   />
+
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -773,7 +1100,6 @@ export default function ContributeModal({
             </p>
           </div>
 
-          {/* Error */}
           {error && (
             <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4">
               <div className="flex items-start gap-3">
@@ -791,11 +1117,13 @@ export default function ContributeModal({
                       strokeLinejoin="round"
                       d="M12 8v4"
                     />
+
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       d="M12 16h.01"
                     />
+
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -820,10 +1148,24 @@ export default function ContributeModal({
             </div>
           )}
 
-          {/* Action */}
           <button
             type="button"
-            onClick={handleContribute}
+            onClick={() => {
+              /*
+               * For a normal payment within the
+               * creator's commitment, classify it
+               * as a commitment contribution.
+               *
+               * If it exceeds the commitment,
+               * handleContribute will stop here and
+               * show the choice screen instead.
+               */
+              void handleContribute(
+                isCreator
+                  ? 'commitment'
+                  : 'normal',
+              )
+            }}
             disabled={
               isSubmitting ||
               !isValidAmount
@@ -858,19 +1200,15 @@ export default function ContributeModal({
             {isSubmitting
               ? t.contributeModal
                   .confirmContribution
-              : isFixedAmount
+              : amount
                 ? t.contributeModal
-                    .contributeAmount.replace(
+                    .contributeAmount
+                    .replace(
                       '{amount}',
                       amount,
                     )
-                : amount
-                  ? t.contributeModal
-                      .contributeAmount.replace(
-                        '{amount}',
-                        amount,
-                      )
-                  : t.contributeModal.contribute}
+                : t.contributeModal
+                    .contribute}
           </button>
 
           <p className="mt-3 text-center text-xs leading-5 text-slate-400">

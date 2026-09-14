@@ -14,7 +14,7 @@ export const fr = {
     tryAgain: 'Réessayer',
     loadingCircles:
       'Chargement de vos cercles...',
-  
+
     errors: {
       network:
         'Nous n’avons pas pu joindre le serveur NimCircle. Vérifiez votre connexion et réessayez.',
@@ -96,6 +96,26 @@ export const fr = {
         'L’expéditeur de la transaction ne correspond pas au portefeuille du contributeur.',
       contributionNotFound:
         'Contribution introuvable.',
+      personalCircleCommitmentInvalid:
+        'Les cercles personnels ne peuvent pas avoir d’engagement du créateur.',
+      fundraisingCommitmentRequired:
+        'Les cercles de collecte nécessitent un engagement du créateur supérieur à zéro.',
+      creatorCommitmentTooLow:
+        'L’engagement du créateur ne peut pas être inférieur au montant que vous avez déjà contribué.',
+      onlyCreatorCanUpdateCommitment:
+        'Seul le créateur du cercle peut modifier l’engagement du créateur.',
+      personalCircleNoCommitment:
+        'Les cercles personnels n’ont pas d’engagement du créateur.',
+      commitmentUpdateLocked:
+        'Seuls les cercles actifs peuvent modifier l’engagement du créateur.',
+      creatorCommitmentReached:
+        'Vous avez atteint votre engagement pour ce cercle.',
+      creatorCommitmentExceeded:
+        'Cette contribution dépasse votre engagement restant.',
+      commitmentCannotExceedTarget:
+        'L’engagement du créateur ne peut pas dépasser l’objectif du Circle.',
+      commitmentCannotBeBelowContributed:
+        'L’engagement du créateur ne peut pas être inférieur au montant déjà versé.',
     },
   },
 
@@ -160,13 +180,13 @@ export const fr = {
     deadline: 'Date limite',
     goalOwner: 'Propriétaire de l’objectif',
     openCircle: 'Ouvrir le Cercle',
-    findCircle: 'Circle finden',
+    findCircle: 'Rechercher un Cercle',
     findCircleDescription:
-      'Gib eine geteilte Circle-ID ein, um den Circle zu öffnen.',
-    circleIdPlaceholder: 'Circle-ID eingeben',
-    search: 'Suchen',
-    searching: 'Suche...',
-    circleIdRequired: 'Gib eine Circle-ID ein.',
+      'Saisissez un ID de Cercle partagé pour ouvrir le Cercle.',
+    circleIdPlaceholder: 'Saisissez l’ID du Cercle',
+    search: 'Rechercher',
+    searching: 'Recherche...',
+    circleIdRequired: 'Saisissez un ID de Cercle.',
     circleNotFound:
       'Circle introuvable.',
   },
@@ -321,7 +341,41 @@ export const fr = {
       'Merci d’aider ce Cercle à atteindre son objectif.',
     circleId: 'ID du cercle',
     copyCircleId: 'Copier',
+    circleIdCopyFailed: 'Impossible de copier l’ID du cercle',
     circleIdCopied: 'Copié',
+    progress: 'Progression',
+    shareDescription:
+      'Rejoignez ce Circle et contribuez à atteindre l’objectif commun avec NimCircle.',
+    you: 'Vous',
+    personal: 'Personnel',
+    fundraising: 'Collecte de fonds',
+    goalType: 'Type d’objectif',
+    commitmentDescription:
+      'Le créateur s’est engagé à contribuer un montant total pendant ce Circle. Il peut le verser en plusieurs paiements.',
+    editCommitment: 'Modifier l’engagement',
+    committed: 'Engagé',
+    contributed: 'Versé',
+    shared: 'Partagé',
+    refreshing: 'Actualisation...',
+    refresh: 'Actualiser',
+    pending: 'En attente',
+    failed: 'Échec',
+    newCommitment: 'Nouvel engagement',
+    updatingCommitment: 'Mise à jour...',
+    updateCommitment: 'Mettre à jour l’engagement',
+    extending: 'Prolongation...',
+    commitmentReached:
+      'Engagement atteint',
+    commitmentReachedDescription:
+      'Vous avez atteint votre engagement actuel en tant que créateur. Vous pouvez modifier votre engagement ou continuer ce paiement comme une contribution normale.',
+    contributionAmount:
+      'Montant de la contribution',
+    commitmentRemaining:
+      'Engagement restant',
+    contributeNormally:
+      'Contribuer normalement',
+    cancel:
+      'Annuler',
   },
 
   profile: {
@@ -433,31 +487,22 @@ export const fr = {
     transactionLabel: 'Transaction : {hash}',
     paymentNoAccount:
       'Aucun compte Nimiq n’est connecté.',
-    
     paymentInvalidRecipient:
       'Ce cercle possède une adresse de destinataire invalide.',
-    
     paymentInvalidRecipientFormat:
       'Le destinataire du cercle n’est pas une adresse Nimiq valide.',
-    
     paymentMissingCircleId:
       'L’identifiant du cercle est manquant.',
-    
     paymentConsensusNotEstablished:
       'Le consensus Nimiq n’est pas encore établi. Attendez que Nimiq Pay termine la synchronisation, puis réessayez.',
-    
     paymentAmountInvalid:
       'Le montant en NIM doit être supérieur à zéro.',
-    
     paymentAmountTooLarge:
       'Le montant en NIM est trop élevé.',
-    
     paymentTransactionFailed:
       'Nimiq Pay n’a pas pu envoyer la transaction.',
-
     testnetRequired:
       'Nimiq Testnet requis',
-    
     testnetRequiredDescription:
       'NimCircle utilise actuellement Nimiq Testnet. Passe Nimiq Pay sur Testnet avant de contribuer.',
   },
@@ -475,7 +520,6 @@ export const fr = {
     displayNamePlaceholder: 'ex. Kaos',
     connectedWallet: 'Portefeuille connecté',
     createProfile: 'Créer le profil',
-  
     pleaseChooseUsername:
       'Veuillez choisir un nom d’utilisateur.',
     usernameTooShort:
@@ -490,7 +534,6 @@ export const fr = {
       'Votre nom affiché doit comporter au moins 2 caractères.',
     displayNameTooLong:
       'Votre nom affiché doit comporter au maximum 30 caractères.',
-  
     usernameTaken:
       'Ce nom d’utilisateur est déjà utilisé.',
     profileExists:

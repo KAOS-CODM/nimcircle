@@ -67,8 +67,13 @@ const circleSchema = new mongoose.Schema(
       index: true,
     },
 
-    // The creator's committed amount, stored in Luna.
-    // This value is intended to be fixed after Circle creation.
+    // The creator's total committed amount, stored in Luna.
+    //
+    // Personal Circles must use 0 because the creator
+    // is also the goal owner and cannot contribute.
+    //
+    // Fundraising Circles use this as the maximum
+    // cumulative amount the creator can contribute.
     creatorCommitment: {
       type: Number,
       required: true,

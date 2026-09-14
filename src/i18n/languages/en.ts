@@ -10,11 +10,13 @@ export const en = {
     unableToLoadProfile: 'Unable to load your profile',
     tryAgain: 'Try again',
     loadingCircles: 'Loading your circles...',
-  
+
     errors: {
-      network: 'We could not reach the NimCircle server. Please check your connection and try again.',
-      invalidResponse: 'The server returned an invalid response. Please try again.',
-  
+      network:
+        'We could not reach the NimCircle server. Please check your connection and try again.',
+      invalidResponse:
+        'The server returned an invalid response. Please try again.',
+
       walletUsernameRequired:
         'Wallet address and username are required.',
       usernameLength:
@@ -23,7 +25,7 @@ export const en = {
         'Username can only contain letters, numbers, and underscores.',
       displayNameLength:
         'Your display name must be 30 characters or fewer.',
-  
+
       profileExists:
         'A profile already exists for this wallet.',
       usernameTaken:
@@ -34,7 +36,7 @@ export const en = {
         'User not found.',
       noValidUpdateFields:
         'No valid profile fields were provided.',
-  
+
       circleFieldsRequired:
         'Some required Circle information is missing.',
       creatorNotFound:
@@ -75,7 +77,7 @@ export const en = {
         'A deadline is required.',
       deadlineMustBeLater:
         'The new deadline must be later than the current deadline.',
-  
+
       transactionHashRequired:
         'A transaction hash is required.',
       transactionNotFound:
@@ -94,6 +96,28 @@ export const en = {
         'The transaction sender does not match the contributor wallet.',
       contributionNotFound:
         'Contribution not found.',
+
+      personalCircleCommitmentInvalid:
+        'Personal Circles cannot have a creator commitment.',
+      fundraisingCommitmentRequired:
+        'Fundraising Circles require a creator commitment greater than zero.',
+      creatorCommitmentTooLow:
+        'The creator commitment cannot be lower than the amount you have already contributed.',
+      onlyCreatorCanUpdateCommitment:
+        'Only the Circle creator can update the creator commitment.',
+      personalCircleNoCommitment:
+        'Personal Circles do not have a creator commitment.',
+      commitmentUpdateLocked:
+        'Only active Circles can update the creator commitment.',
+      creatorCommitmentReached:
+        'You have reached your commitment for this Circle.',
+      creatorCommitmentExceeded:
+        'This contribution exceeds your remaining commitment.',
+
+      commitmentCannotExceedTarget:
+        'The creator commitment cannot exceed the Circle target.',
+      commitmentCannotBeBelowContributed:
+        'The creator commitment cannot be lower than the amount already contributed.',
     },
   },
 
@@ -165,7 +189,7 @@ export const en = {
     search: 'Search',
     searching: 'Searching...',
     circleIdRequired: 'Enter a Circle ID.',
-    circleNotFound: 'Circle not found'
+    circleNotFound: 'Circle not found',
   },
 
   createCircle: {
@@ -210,54 +234,90 @@ export const en = {
     loadingDescription: 'Fetching the latest Circle information.',
     unableToLoad: 'Unable to load Circle',
     tryAgain: 'Please try again.',
-    refreshError: 'Something went wrong while refreshing this Circle.',
+    refreshError:
+      'Something went wrong while refreshing this Circle.',
     retrying: 'Retrying...',
     retry: 'Retry',
+
     sharedGoal: 'Shared Goal',
     completed: 'Completed',
     cancelled: 'Cancelled',
     expired: 'Expired',
     active: 'Active',
+
     raised: 'Raised',
     target: 'Target',
+    progress: 'Progress',
     complete: 'complete',
     goalReached: 'Goal reached',
     remaining: 'remaining',
+
     deadline: 'Deadline',
     contributors: 'Contributors',
     contributor: 'Contributor',
     peopleContributing: 'people contributing',
     personContributing: 'person contributing',
+
     shareCircle: 'Share Circle',
+    shareDescription:
+      'Join this Circle and help reach the shared goal with NimCircle.',
     linkCopied: 'Link copied',
     unableToCopy: 'Unable to copy link',
+    shared: 'Shared',
+
     aboutCircle: 'About this Circle',
     creator: 'Creator',
     goalOwner: 'Goal owner',
+    you: 'You',
+
     creatorCommitment: 'Creator commitment',
     created: 'Created',
+
+    personal: 'Personal',
+    fundraising: 'Fundraising',
+    goalType: 'Goal type',
+
     contributorsDescription:
       'People who have contributed to this goal.',
     loadingContributors: 'Loading contributors...',
     noContributors: 'No contributors yet',
     noContributorsDescription:
       'Be the first person to contribute to this Circle.',
+
     contributionHistory: 'Contribution history',
     contributionHistoryDescription:
       'Recent contributions made to this Circle.',
-    loadingContributionHistory: 'Loading contribution history...',
+    loadingContributionHistory:
+      'Loading contribution history...',
     noContributions: 'No contributions yet',
     noContributionsDescription:
       'Contributions will appear here once they are confirmed.',
     contribution: 'Contribution',
     confirmed: 'Confirmed',
+    pending: 'Pending',
+    failed: 'Failed',
+
     creatorControls: 'Creator controls',
     manageCircle: 'Manage Circle',
+
     fixedCommitment: 'Fixed commitment',
-    cannotChange: 'Your commitment cannot be changed after creation.',
+    cannotChange:
+      'Your commitment cannot be changed after creation.',
+
+    commitmentDescription:
+      'The creator has committed to contributing a total amount during this Circle. They can contribute it in multiple payments.',
+    editCommitment: 'Edit commitment',
+    committed: 'Committed',
+    contributed: 'Contributed',
+    newCommitment: 'New commitment',
+    updatingCommitment: 'Updating...',
+    updateCommitment: 'Update commitment',
+
     extendDeadline: 'Extend deadline',
     extendDeadlineDescription:
       'Give this Circle more time to reach its goal.',
+    extending: 'Extending...',
+
     cancelCircle: 'Cancel Circle',
     cancelCircleDescription:
       'Cancel this Circle if you no longer want to continue.',
@@ -266,24 +326,45 @@ export const en = {
       'This action cannot be undone. Contributors will no longer be able to contribute.',
     keepCircle: 'Keep Circle',
     cancelling: 'Cancelling...',
+    commitmentReached:
+      'Commitment reached',
+
+    commitmentReachedDescription:
+      'You have reached your current creator commitment. You can update your commitment or continue with this payment as a normal contribution.',
+
+    contributionAmount:
+      'Contribution amount',
+
+    commitmentRemaining:
+      'Commitment remaining',
+
+    contributeNormally:
+      'Contribute normally',
+
+    cancel:
+      'Cancel',
+
     giveMoreTime: 'Give more time',
     newDeadline: 'New deadline',
     newDeadlineDescription:
-      'Choose a new deadline later than the current one.',
+      'Choose a new deadline later than the current deadline.',
     closeDeadlineEditor: 'Close deadline editor',
     updateDeadline: 'Update deadline',
     updatingDeadline: 'Updating deadline...',
     chooseNewDeadline: 'Choose a new deadline',
-    validNewDeadline: 'Choose a deadline after the current deadline.',
+    validNewDeadline:
+      'Choose a deadline after the current deadline.',
     currentDeadlineInvalid:
       'The current deadline is no longer valid.',
     newDeadlineMustBeLater:
       'The new deadline must be later than the current deadline.',
+
     goalCompleted: 'Goal completed',
     deadlineUnavailable: 'Deadline unavailable',
     deadlinePassed: 'Deadline passed',
     lessThanDay: 'Less than a day left',
     daysLeft: '{count} days left',
+
     goalReachedDescription:
       'This Circle has reached its savings goal.',
     circleExpired: 'Circle expired',
@@ -292,11 +373,13 @@ export const en = {
     circleCancelled: 'Circle cancelled',
     circleCancelledDescription:
       'This Circle was cancelled by its creator.',
+
     contributeNim: 'Contribute NIM',
     contributeAmount: 'Contribution amount',
     creatorCommitmentUnavailable:
       'Creator commitment unavailable',
     goalFullyFunded: 'Goal fully funded',
+
     creatorContributionDescription:
       'The creator has committed to contributing to this Circle.',
     goalOwnerDescription:
@@ -305,9 +388,14 @@ export const en = {
       'The creator has not set a commitment for this Circle.',
     contributorDescription:
       'Thank you for helping this Circle reach its goal.',
+
+    refreshing: 'Refreshing...',
+    refresh: 'Refresh',
+
     circleId: 'Circle ID',
     copyCircleId: 'Copy',
     circleIdCopied: 'Copied',
+    circleIdCopyFailed: 'Unable to copy Circle ID',
   },
 
   profile: {
@@ -417,31 +505,31 @@ export const en = {
     transactionLabel: 'Transaction: {hash}',
     paymentNoAccount:
       'No Nimiq account is connected.',
-    
+
     paymentInvalidRecipient:
       'The Circle has an invalid recipient address.',
-    
+
     paymentInvalidRecipientFormat:
       'The Circle recipient is not a valid Nimiq address.',
-    
+
     paymentMissingCircleId:
       'The Circle ID is missing.',
-    
+
     paymentConsensusNotEstablished:
       'Nimiq consensus is not established yet. Please wait for Nimiq Pay to finish syncing and try again.',
-    
+
     paymentAmountInvalid:
       'NIM amount must be greater than zero.',
-    
+
     paymentAmountTooLarge:
       'NIM amount is too large.',
-    
+
     paymentTransactionFailed:
       'Nimiq Pay could not send the transaction.',
 
     testnetRequired:
       'Nimiq Testnet required',
-    
+
     testnetRequiredDescription:
       'NimCircle is currently using Nimiq Testnet. Please switch Nimiq Pay to Testnet before contributing.',
   },
@@ -459,7 +547,7 @@ export const en = {
     displayNamePlaceholder: 'e.g. Kaos',
     connectedWallet: 'Connected wallet',
     createProfile: 'Create profile',
-  
+
     pleaseChooseUsername:
       'Please choose a username.',
     usernameTooShort:
@@ -474,7 +562,7 @@ export const en = {
       'Your display name must be at least 2 characters.',
     displayNameTooLong:
       'Your display name must be 30 characters or fewer.',
-  
+
     usernameTaken:
       'That username is already taken.',
     profileExists:

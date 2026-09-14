@@ -38,6 +38,73 @@ function normalizeMemo(memo) {
     : ''
 }
 
+async function getCreatorContributionTotal(
+  circleId,
+  creatorWallet,
+) {
+  const normalizedWallet =
+    normalizeWallet(
+      creatorWallet,
+    )
+
+  const result =
+    await Contribution.aggregate([
+      {
+        $match: {
+          circleId,
+
+          contributorWallet:
+            normalizedWallet,
+
+          /*
+           * Commitment contributions consume
+           * creator commitment capacity.
+           *
+           * Existing contributions created before
+           * contributionType was introduced do not
+           * have this field, so they are treated as
+           * legacy commitment contributions.
+           */
+          $or: [
+            {
+              contributionType:
+                'commitment',
+            },
+            {
+              contributionType: {
+                $exists: false,
+              },
+            },
+          ],
+
+          /*
+           * Pending contributions reserve
+           * creator commitment capacity.
+           *
+           * Failed contributions do not.
+           */
+          status: {
+            $in: [
+              'pending',
+              'confirmed',
+            ],
+          },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+
+          total: {
+            $sum: '$amount',
+          },
+        },
+      },
+    ])
+
+  return result[0]?.total || 0
+}
+
 /* -------------------------------------------------------------------------- */
 /* Create contribution                                                        */
 /* -------------------------------------------------------------------------- */
@@ -50,6 +117,7 @@ async function createContribution({
   transactionHash,
   recipientWallet,
   memo,
+  contributionType,
 }) {
   if (
     !circleId ||
@@ -104,14 +172,6 @@ async function createContribution({
   /* Idempotency                                                             */
   /* ---------------------------------------------------------------------- */
 
-  /*
-   * transactionHash is the unique identity of
-   * the blockchain payment.
-   *
-   * Check it before performing Circle-state
-   * validation so a retry can safely recover
-   * an already-created pending contribution.
-   */
   const existingContribution =
     await Contribution.findOne({
       transactionHash:
@@ -148,11 +208,6 @@ async function createContribution({
       ) ===
       String(contributorUserId)
 
-    /*
-     * Never allow the same transaction hash
-     * to be reused with different contribution
-     * information.
-     */
     if (
       !sameCircle ||
       !sameWallet ||
@@ -169,13 +224,6 @@ async function createContribution({
       throw error
     }
 
-    /*
-     * The request is a safe retry.
-     *
-     * Return the existing contribution rather
-     * than creating a duplicate or returning
-     * an unnecessary 409 error.
-     */
     return existingContribution
   }
 
@@ -198,8 +246,41 @@ async function createContribution({
     throw error
   }
 
+  const isCreator =
+    normalizedWallet ===
+    normalizeWallet(
+      circle.creatorWallet,
+    )
+  
+  const isFundraisingCircle =
+    normalizeWallet(
+      circle.creatorWallet,
+    ) !==
+    normalizeWallet(
+      circle.goalOwnerWallet,
+    )
+  
+  const normalizedContributionType =
+    contributionType === 'commitment'
+      ? 'commitment'
+      : 'normal'
+  
+  if (
+    normalizedContributionType ===
+      'commitment' &&
+    (!isCreator ||
+      !isFundraisingCircle)
+  ) {
+    const error = new Error(
+      'Only the creator of a fundraising Circle can make a commitment contribution',
+    )
+  
+    error.statusCode = 403
+    throw error
+  }
+
   /* ---------------------------------------------------------------------- */
-  /* Synchronize Circle status before accepting a new contribution           */
+  /* Synchronize Circle status                                               */
   /* ---------------------------------------------------------------------- */
 
   if (
@@ -317,8 +398,8 @@ async function createContribution({
   }
 
   /*
-   * The goal owner cannot record a normal
-   * contribution to their own personal goal.
+   * The goal owner cannot contribute to
+   * their own Circle.
    */
   if (
     normalizedWallet ===
@@ -387,6 +468,13 @@ async function createContribution({
       0,
     )
 
+  /*
+   * This remains a hard safety limit.
+   *
+   * Even if a creator has already reached
+   * their commitment, a contribution cannot
+   * exceed the remaining Circle target.
+   */
   if (
     parsedAmount >
     remainingAmount
@@ -400,6 +488,33 @@ async function createContribution({
   }
 
   /* ---------------------------------------------------------------------- */
+  /* Creator commitment                                                      */
+  /* ---------------------------------------------------------------------- */
+
+  /*
+   * Creator commitment is intentionally NOT
+   * used as a hard payment limit here.
+   *
+   * A creator may contribute more than their
+   * original commitment.
+   *
+   * The commitment represents how much the
+   * creator committed to contribute, not the
+   * maximum amount their wallet is allowed
+   * to send to the Circle.
+   *
+   * The frontend warns the creator when a
+   * payment would exceed the commitment and
+   * lets them choose whether to increase the
+   * commitment or make a normal contribution.
+   *
+   * Most importantly, once a blockchain
+   * transaction exists, this endpoint will
+   * not reject it simply because the creator
+   * commitment has been fulfilled.
+   */
+
+  /* ---------------------------------------------------------------------- */
   /* Create pending contribution                                             */
   /* ---------------------------------------------------------------------- */
 
@@ -408,24 +523,27 @@ async function createContribution({
       await Contribution.create({
         circleId:
           circle.circleId,
-
+    
         contributorWallet:
           normalizedWallet,
-
+    
         contributorUserId,
-
+    
         recipientWallet:
           normalizedRecipientWallet,
-
+    
         amount:
           parsedAmount,
-
+    
+        contributionType:
+          normalizedContributionType,
+    
         transactionHash:
           normalizedHash,
-
+    
         memo:
           normalizedMemo,
-
+    
         status:
           'pending',
       })
@@ -436,8 +554,6 @@ async function createContribution({
      * A concurrent request may have inserted
      * the same transaction between our initial
      * lookup and Contribution.create().
-     *
-     * Recover that situation safely.
      */
     if (
       error.code === 11000
@@ -507,9 +623,6 @@ async function confirmContribution(
 
   /*
    * Idempotent confirmation.
-   *
-   * If the transaction has already been
-   * confirmed, return it immediately.
    */
   if (
     contribution.status ===
@@ -550,20 +663,9 @@ async function confirmContribution(
   }
 
   /*
-   * IMPORTANT:
-   *
-   * Do not require the Circle to still be
-   * "active" here.
-   *
-   * A contribution may have been sent while
-   * the Circle was active and become visible
-   * on the blockchain after the Circle reached
-   * its target or expired.
-   *
-   * The transaction itself is what determines
+   * The transaction itself determines
    * whether this pending contribution is valid.
    */
-
   if (
     contribution.recipientWallet !==
     circle.goalOwnerWallet
@@ -608,22 +710,6 @@ async function confirmContribution(
     const error =
       new Error(reason)
 
-    /*
-     * Verification now explicitly tells us
-     * whether the problem is temporary.
-     *
-     * Temporary examples:
-     * - transaction not visible yet
-     * - transaction not confirmed yet
-     * - temporary blockchain query failure
-     *
-     * Permanent examples:
-     * - wrong sender
-     * - wrong recipient
-     * - wrong amount
-     * - wrong memo
-     * - failed transaction
-     */
     error.code =
       verification.code
 
@@ -633,11 +719,6 @@ async function confirmContribution(
     if (
       verification.retryable
     ) {
-      /*
-       * 409 tells the frontend that the
-       * contribution exists but cannot be
-       * completed yet.
-       */
       error.statusCode = 409
     } else {
       error.statusCode =
@@ -663,14 +744,6 @@ async function confirmContribution(
   /* Synchronize Circle completion                                           */
   /* ---------------------------------------------------------------------- */
 
-  /*
-   * The contribution has now been verified,
-   * so it can contribute to the Circle's
-   * confirmed total.
-   *
-   * We only synchronize completion after
-   * the contribution itself is confirmed.
-   */
   if (
     circle.status ===
     'active'

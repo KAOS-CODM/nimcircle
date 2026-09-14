@@ -6,6 +6,7 @@ const cors = require('cors')
 const helmet = require('helmet')
 
 const connectDatabase = require('./db')
+const mongoose = require('mongoose')
 
 const userRoutes = require('./routes/users')
 const circleRoutes = require('./routes/circles')
@@ -105,10 +106,30 @@ app.use(
  * monitoring can always reach it.
  */
 app.get('/api/health', (req, res) => {
-  res.json({
-    success: true,
+  const databaseStates = {
+    0: 'disconnected',
+    1: 'connected',
+    2: 'connecting',
+    3: 'disconnecting',
+  }
+
+  const databaseState =
+    databaseStates[
+      mongoose.connection.readyState
+    ] || 'unknown'
+
+  const isDatabaseConnected =
+    mongoose.connection.readyState === 1
+
+  res.status(
+    isDatabaseConnected ? 200 : 503,
+  ).json({
+    success: isDatabaseConnected,
     service: 'NimCircle API',
-    status: 'healthy',
+    status: isDatabaseConnected
+      ? 'healthy'
+      : 'degraded',
+    database: databaseState,
   })
 })
 

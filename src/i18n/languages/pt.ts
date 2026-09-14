@@ -14,7 +14,7 @@ export const pt = {
     tryAgain: 'Tentar novamente',
     loadingCircles:
       'A carregar os seus círculos...',
-  
+
     errors: {
       network:
         'Não foi possível contactar o servidor NimCircle. Verifique a sua ligação e tente novamente.',
@@ -96,6 +96,26 @@ export const pt = {
         'O remetente da transação não corresponde à carteira do contribuidor.',
       contributionNotFound:
         'Contribuição não encontrada.',
+      personalCircleCommitmentInvalid:
+        'Círculos pessoais não podem ter um compromisso do criador.',
+      fundraisingCommitmentRequired:
+        'Círculos de arrecadação exigem um compromisso do criador maior que zero.',
+      creatorCommitmentTooLow:
+        'O compromisso do criador não pode ser menor que o valor que você já contribuiu.',
+      onlyCreatorCanUpdateCommitment:
+        'Somente o criador do círculo pode atualizar o compromisso do criador.',
+      personalCircleNoCommitment:
+        'Círculos pessoais não têm um compromisso do criador.',
+      commitmentUpdateLocked:
+        'Somente círculos ativos podem atualizar o compromisso do criador.',
+      creatorCommitmentReached:
+        'Você atingiu seu compromisso para este círculo.',
+      creatorCommitmentExceeded:
+        'Esta contribuição excede seu compromisso restante.',
+      commitmentCannotExceedTarget:
+        'O compromisso do criador não pode exceder a meta do Circle.',
+      commitmentCannotBeBelowContributed:
+        'O compromisso do criador não pode ser inferior ao valor já contribuído.',
     },
   },
 
@@ -162,10 +182,10 @@ export const pt = {
     openCircle: 'Abrir Círculo',
     findCircle: 'Encontrar um círculo',
     findCircleDescription:
-      'Insira um ID de círculo compartilhado com você para abrir o círculo.',
+      'Insira um ID de círculo partilhado consigo para abrir o círculo.',
     circleIdPlaceholder: 'Insira o ID do círculo',
     search: 'Pesquisar',
-    searching: 'Pesquisando...',
+    searching: 'A pesquisar...',
     circleIdRequired: 'Insira um ID de círculo.',
     circleNotFound:
       'Circle não encontrado.',
@@ -318,7 +338,57 @@ export const pt = {
       'Obrigado por ajudar este Círculo a alcançar o seu objetivo.',
     circleId: 'ID do círculo',
     copyCircleId: 'Copiar',
+    circleIdCopyFailed: 'Não foi possível copiar o ID do Circle',
     circleIdCopied: 'Copiado',
+    progress: 'Progresso',
+
+    shareDescription:
+      'Participe deste Circle e ajude a alcançar a meta partilhada com o NimCircle.',
+
+    you: 'Você',
+
+    personal: 'Pessoal',
+    fundraising: 'Arrecadação',
+    goalType: 'Tipo de meta',
+
+    commitmentDescription:
+      'O criador comprometeu-se a contribuir com um valor total durante este Circle. Pode contribuir em vários pagamentos.',
+
+    editCommitment: 'Editar compromisso',
+    committed: 'Comprometido',
+    contributed: 'Contribuído',
+
+    shared: 'Partilhado',
+
+    refreshing: 'A atualizar...',
+    refresh: 'Atualizar',
+
+    pending: 'Pendente',
+    failed: 'Falhou',
+
+    newCommitment: 'Novo compromisso',
+    updatingCommitment: 'A atualizar...',
+    updateCommitment: 'Atualizar compromisso',
+
+    extending: 'A prolongar...',
+
+    commitmentReached:
+      'Compromisso atingido',
+
+    commitmentReachedDescription:
+      'Atingiu o seu compromisso atual como criador. Pode atualizar o seu compromisso ou continuar este pagamento como uma contribuição normal.',
+
+    contributionAmount:
+      'Valor da contribuição',
+
+    commitmentRemaining:
+      'Compromisso restante',
+
+    contributeNormally:
+      'Contribuir normalmente',
+
+    cancel:
+      'Cancelar',
   },
 
   profile: {
@@ -351,10 +421,10 @@ export const pt = {
     eyebrow: 'NimCircle',
     title: 'Poupe em conjunto.',
     description:
-      'Cria objetivos NIM partilhados, convida outras pessoas e acompanha todos a contribuir para o mesmo objetivo.',
+      'Crie objetivos NIM partilhados, convide outras pessoas e acompanhe todos a contribuir para o mesmo objetivo.',
     walletCardTitle: 'Ligar a carteira Nimiq',
     walletCardDescription:
-      'O NimCircle utiliza a tua carteira Nimiq Pay para te identificar e enviar contribuições em NIM.',
+      'O NimCircle utiliza a sua carteira Nimiq Pay para o identificar e enviar contribuições em NIM.',
     connect: 'Ligar carteira',
     connecting: 'A ligar...',
     connectionFailed: 'Falha ao ligar a carteira',
@@ -365,24 +435,24 @@ export const pt = {
     wallet: 'Carteira',
     notConnected: 'Não ligada',
     securityNote:
-      'As tuas chaves privadas nunca saem do Nimiq Pay.',
+      'As suas chaves privadas nunca saem do Nimiq Pay.',
   },
 
   walletRestoring: {
     eyebrow: 'NimCircle',
     title: 'A iniciar o NimCircle',
     description: 'A ligar ao Nimiq Pay...',
-    initializing: 'A inicializar a ligação à tua carteira',
+    initializing: 'A inicializar a ligação à sua carteira',
     networkMainnet: 'Nimiq Mainnet',
     networkTestnet: 'Nimiq Testnet',
-    networkDetecting: 'Detetando rede...',
+    networkDetecting: 'A detetar a rede...',
   },
 
   welcomeBack: {
     eyebrow: 'NimCircle',
     title: 'Bem-vindo de volta, {name}',
     description:
-      'A tua carteira e o teu perfil estão prontos. Vamos voltar aos teus círculos.',
+      'A sua carteira e o seu perfil estão prontos. Vamos voltar aos seus círculos.',
     continue: 'Continuar',
   },
 
@@ -403,60 +473,60 @@ export const pt = {
     transaction: 'Transação',
     contributionConfirmed: 'Contribuição confirmada',
     contributionConfirmedDescription:
-      'A tua contribuição de {amount} NIM foi confirmada na blockchain Nimiq.',
+      'A sua contribuição de {amount} NIM foi confirmada na blockchain Nimiq.',
     done: 'Concluído',
     walletApproval:
-      'O Nimiq Pay irá pedir-te para aprovares esta transação.',
-    validAmount: 'Introduz um montante NIM válido.',
+      'O Nimiq Pay irá pedir-lhe para aprovar esta transação.',
+    validAmount: 'Introduza um montante NIM válido.',
     maximumAmount:
-      'Podes contribuir no máximo {amount} NIM.',
+      'Pode contribuir no máximo {amount} NIM.',
     minimumAmount:
       'A contribuição mínima é de 0.00001 NIM.',
     creatorCommitmentCannotChange:
-      'O teu compromisso como criador não pode ser alterado.',
+      'O seu compromisso como criador não pode ser alterado.',
     invalidRecipient:
       'Este círculo tem um endereço de destinatário inválido.',
     transactionCancelled:
-      'Cancelaste a transação.',
+      'Cancelou a transação.',
     serverUnavailable:
-      'Não foi possível contactar o servidor do NimCircle. Verifica a tua ligação e tenta novamente.',
+      'Não foi possível contactar o servidor do NimCircle. Verifique a sua ligação e tente novamente.',
     processingError:
-      'Ocorreu um erro ao processar a contribuição. Tenta novamente.',
+      'Ocorreu um erro ao processar a contribuição. Tente novamente.',
     transactionConfirmationFailed:
       'Não foi possível confirmar a transação.',
     transactionSentWarning:
-      'A tua transação foi enviada, mas o NimCircle não conseguiu concluir o processamento. Os teus fundos podem já ter sido transferidos.',
+      'A sua transação foi enviada, mas o NimCircle não conseguiu concluir o processamento. Os seus fundos podem já ter sido transferidos.',
     unknownTransaction: 'desconhecida',
     transactionLabel: 'Transação: {hash}',
     paymentNoAccount:
       'Não está ligada nenhuma conta Nimiq.',
-    
+
     paymentInvalidRecipient:
       'Este círculo tem um endereço de destinatário inválido.',
-    
+
     paymentInvalidRecipientFormat:
       'O destinatário do círculo não é um endereço Nimiq válido.',
-    
+
     paymentMissingCircleId:
       'Falta o ID do círculo.',
-    
+
     paymentConsensusNotEstablished:
-      'O consenso Nimiq ainda não está estabelecido. Aguarda que o Nimiq Pay termine a sincronização e tenta novamente.',
-    
+      'O consenso Nimiq ainda não está estabelecido. Aguarde que o Nimiq Pay termine a sincronização e tente novamente.',
+
     paymentAmountInvalid:
       'O montante em NIM deve ser superior a zero.',
-    
+
     paymentAmountTooLarge:
       'O montante em NIM é demasiado elevado.',
-    
+
     paymentTransactionFailed:
       'O Nimiq Pay não conseguiu enviar a transação.',
 
     testnetRequired:
       'Nimiq Testnet necessário',
-    
+
     testnetRequiredDescription:
-      'O NimCircle está usando o Nimiq Testnet. Mude o Nimiq Pay para Testnet antes de contribuir.',
+      'O NimCircle está a utilizar atualmente o Nimiq Testnet. Mude o Nimiq Pay para Testnet antes de contribuir.',
   },
 
   profileSetup: {
@@ -472,7 +542,7 @@ export const pt = {
     displayNamePlaceholder: 'ex. Kaos',
     connectedWallet: 'Carteira conectada',
     createProfile: 'Criar perfil',
-  
+
     pleaseChooseUsername:
       'Escolha um nome de utilizador.',
     usernameTooShort:
@@ -487,7 +557,7 @@ export const pt = {
       'O seu nome de apresentação deve ter pelo menos 2 caracteres.',
     displayNameTooLong:
       'O seu nome de apresentação deve ter no máximo 30 caracteres.',
-  
+
     usernameTaken:
       'Esse nome de utilizador já está em uso.',
     profileExists:
@@ -501,21 +571,21 @@ export const pt = {
   networkNotice: {
     testnetTitle: 'O NimCircle está em fase de testes',
     testnetDescription:
-      'O NimCircle está atualmente no Nimiq Testnet durante a fase de testes. Mude a rede do Nimiq Pay de Default para Testnet antes de conectar sua carteira ou fazer uma contribuição.',
+      'O NimCircle está atualmente no Nimiq Testnet durante a fase de testes. Mude a rede do Nimiq Pay de Default para Testnet antes de conectar a sua carteira ou fazer uma contribuição.',
     mainnetTitle: 'O NimCircle está disponível',
     mainnetDescription:
-      'A fase de testes terminou. O NimCircle agora está no Nimiq Mainnet. Mude a rede do Nimiq Pay de Default para Mainnet antes de conectar sua carteira ou fazer uma contribuição.',
+      'A fase de testes terminou. O NimCircle agora está no Nimiq Mainnet. Mude a rede do Nimiq Pay de Default para Mainnet antes de conectar a sua carteira ou fazer uma contribuição.',
     testnet: 'Testnet',
     mainnet: 'Mainnet',
     howToSwitchTestnet: 'Como mudar para Testnet',
     howToSwitchMainnet: 'Como mudar para Mainnet',
     testnetGuide:
-      'No Nimiq Pay, abra o menu e mantenha Configurações pressionado por cerca de 10 segundos para abrir as configurações do provedor. Nessa tela, mude a rede de Default para Testnet. Você não precisa alterar mais nada. O Nimiq Pay recarregará a Mini App automaticamente. Você pode obter NIM de teste gratuitamente na página do Nimiq Testnet e usá-los para testar o NimCircle.',
+      'No Nimiq Pay, abra o menu e mantenha Configurações pressionado por cerca de 10 segundos para abrir as configurações do provedor. Nessa tela, mude a rede de Default para Testnet. Não precisa de alterar mais nada. O Nimiq Pay recarregará a Mini App automaticamente. Pode obter NIM de teste gratuitamente na página do Nimiq Testnet e usá-los para testar o NimCircle.',
     mainnetGuide:
-      'No Nimiq Pay, abra o menu e mantenha Configurações pressionado por cerca de 10 segundos para abrir as configurações do provedor. Nessa tela, mude a rede de Default para Mainnet. Você não precisa alterar mais nada. O Nimiq Pay recarregará a Mini App automaticamente.',
+      'No Nimiq Pay, abra o menu e mantenha Configurações pressionado por cerca de 10 segundos para abrir as configurações do provedor. Nessa tela, mude a rede de Default para Mainnet. Não precisa de alterar mais nada. O Nimiq Pay recarregará a Mini App automaticamente.',
     hideGuide: 'Ocultar instruções',
     ignoreIfCorrect:
-      'Já está usando a rede correta? Você pode ignorar esta mensagem e continuar.',
+      'Já está a usar a rede correta? Pode ignorar esta mensagem e continuar.',
   },
 
   language: {

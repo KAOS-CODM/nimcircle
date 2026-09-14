@@ -7,14 +7,21 @@ const {
   getJoinedCircles,
   updateCircleStatus,
   extendCircleDeadline,
+  updateCircleCommitment,
 } = require('../services/circleService')
 
 const router = express.Router()
 
+/* -------------------------------------------------------------------------- */
+/* Create Circle                                                              */
+/* -------------------------------------------------------------------------- */
+
 router.post('/', async (req, res) => {
   try {
     const circle =
-      await createCircle(req.body)
+      await createCircle(
+        req.body,
+      )
 
     return res.status(201).json({
       circle,
@@ -34,6 +41,10 @@ router.post('/', async (req, res) => {
     })
   }
 })
+
+/* -------------------------------------------------------------------------- */
+/* Created Circles                                                            */
+/* -------------------------------------------------------------------------- */
 
 router.get(
   '/creator/:walletAddress',
@@ -64,6 +75,10 @@ router.get(
   },
 )
 
+/* -------------------------------------------------------------------------- */
+/* Joined Circles                                                             */
+/* -------------------------------------------------------------------------- */
+
 router.get(
   '/joined/:walletAddress',
   async (req, res) => {
@@ -93,6 +108,50 @@ router.get(
   },
 )
 
+/* -------------------------------------------------------------------------- */
+/* Update Creator Commitment                                                  */
+/* -------------------------------------------------------------------------- */
+
+router.patch(
+  '/:circleId/commitment',
+  async (req, res) => {
+    try {
+      const {
+        creatorCommitment,
+        walletAddress,
+      } = req.body
+
+      const circle =
+        await updateCircleCommitment(
+          req.params.circleId,
+          creatorCommitment,
+          walletAddress,
+        )
+
+      return res.json({
+        circle,
+      })
+    } catch (error) {
+      console.error(
+        'PATCH /circles/:circleId/commitment failed:',
+        error,
+      )
+
+      return res.status(
+        error.statusCode || 500,
+      ).json({
+        error:
+          error.message ||
+          'Failed to update Circle commitment',
+      })
+    }
+  },
+)
+
+/* -------------------------------------------------------------------------- */
+/* Get Circle                                                                 */
+/* -------------------------------------------------------------------------- */
+
 router.get(
   '/:circleId',
   async (req, res) => {
@@ -119,6 +178,10 @@ router.get(
     }
   },
 )
+
+/* -------------------------------------------------------------------------- */
+/* Update Circle Status                                                       */
+/* -------------------------------------------------------------------------- */
 
 router.patch(
   '/:circleId/status',
@@ -155,6 +218,10 @@ router.patch(
     }
   },
 )
+
+/* -------------------------------------------------------------------------- */
+/* Extend Circle Deadline                                                     */
+/* -------------------------------------------------------------------------- */
 
 router.patch(
   '/:circleId/deadline',

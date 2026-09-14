@@ -14,7 +14,7 @@ export const es = {
     tryAgain: 'Inténtalo de nuevo',
     loadingCircles:
       'Cargando tus círculos...',
-  
+
     errors: {
       network:
         'No pudimos conectar con el servidor de NimCircle. Comprueba tu conexión e inténtalo de nuevo.',
@@ -96,6 +96,26 @@ export const es = {
         'El remitente de la transacción no coincide con la billetera del contribuyente.',
       contributionNotFound:
         'Contribución no encontrada.',
+      personalCircleCommitmentInvalid:
+        'Los círculos personales no pueden tener un compromiso del creador.',
+      fundraisingCommitmentRequired:
+        'Los círculos de recaudación requieren un compromiso del creador mayor que cero.',
+      creatorCommitmentTooLow:
+        'El compromiso del creador no puede ser inferior a la cantidad que ya has aportado.',
+      onlyCreatorCanUpdateCommitment:
+        'Solo el creador del círculo puede actualizar el compromiso del creador.',
+      personalCircleNoCommitment:
+        'Los círculos personales no tienen un compromiso del creador.',
+      commitmentUpdateLocked:
+        'Solo los círculos activos pueden actualizar el compromiso del creador.',
+      creatorCommitmentReached:
+        'Has alcanzado tu compromiso para este círculo.',
+      creatorCommitmentExceeded:
+        'Esta contribución supera el compromiso que te queda.',
+      commitmentCannotExceedTarget:
+        'El compromiso del creador no puede superar el objetivo del Circle.',
+      commitmentCannotBeBelowContributed:
+        'El compromiso del creador no puede ser inferior a la cantidad que ya ha aportado.',
     },
   },
 
@@ -168,7 +188,7 @@ export const es = {
     searching: 'Buscando...',
     circleIdRequired: 'Introduce un ID de círculo.',
     circleNotFound:
-        'Circle no encontrado.',
+      'Circle no encontrado.',
   },
 
   createCircle: {
@@ -213,38 +233,56 @@ export const es = {
     loadingDescription: 'Obteniendo la información más reciente.',
     unableToLoad: 'No se pudo cargar el Círculo',
     tryAgain: 'Inténtalo de nuevo.',
-    refreshError: 'Algo salió mal al actualizar este Círculo.',
+    refreshError:
+      'Algo salió mal al actualizar este Círculo.',
     retrying: 'Reintentando...',
     retry: 'Reintentar',
+
     sharedGoal: 'Meta compartida',
     completed: 'Completado',
     cancelled: 'Cancelado',
     expired: 'Expirado',
     active: 'Activo',
+
     raised: 'Recaudado',
     target: 'Meta',
+    progress: 'Progreso',
     complete: 'completado',
     goalReached: 'Meta alcanzada',
     remaining: 'restante',
+
     deadline: 'Fecha límite',
     contributors: 'Contribuyentes',
     contributor: 'Contribuyente',
     peopleContributing: 'personas contribuyendo',
     personContributing: 'persona contribuyendo',
+
     shareCircle: 'Compartir Círculo',
+    shareDescription:
+      'Únete a este Circle y ayuda a alcanzar el objetivo compartido con NimCircle.',
     linkCopied: 'Enlace copiado',
     unableToCopy: 'No se pudo copiar el enlace',
+    shared: 'Compartido',
+
     aboutCircle: 'Sobre este Círculo',
     creator: 'Creador',
     goalOwner: 'Propietario de la meta',
+    you: 'Tú',
+
     creatorCommitment: 'Compromiso del creador',
     created: 'Creado',
+
+    personal: 'Personal',
+    fundraising: 'Recaudación',
+    goalType: 'Tipo de objetivo',
+
     contributorsDescription:
       'Personas que han contribuido a esta meta.',
     loadingContributors: 'Cargando contribuyentes...',
     noContributors: 'Aún no hay contribuyentes',
     noContributorsDescription:
       'Sé la primera persona en contribuir a este Círculo.',
+
     contributionHistory: 'Historial de contribuciones',
     contributionHistoryDescription:
       'Contribuciones recientes realizadas a este Círculo.',
@@ -255,14 +293,30 @@ export const es = {
       'Las contribuciones aparecerán aquí cuando sean confirmadas.',
     contribution: 'Contribución',
     confirmed: 'Confirmada',
+    pending: 'Pendiente',
+    failed: 'Fallida',
+
     creatorControls: 'Controles del creador',
     manageCircle: 'Administrar Círculo',
+
     fixedCommitment: 'Compromiso fijo',
     cannotChange:
       'Tu compromiso no se puede cambiar después de crear el Círculo.',
+
+    commitmentDescription:
+      'El creador se ha comprometido a aportar una cantidad total durante este Circle. Puede aportarla en varios pagos.',
+    editCommitment: 'Editar compromiso',
+    committed: 'Comprometido',
+    contributed: 'Aportado',
+    newCommitment: 'Nuevo compromiso',
+    updatingCommitment: 'Actualizando...',
+    updateCommitment: 'Actualizar compromiso',
+
     extendDeadline: 'Extender fecha límite',
     extendDeadlineDescription:
       'Dale más tiempo a este Círculo para alcanzar su meta.',
+    extending: 'Ampliando...',
+
     cancelCircle: 'Cancelar Círculo',
     cancelCircleDescription:
       'Cancela este Círculo si ya no quieres continuar.',
@@ -271,6 +325,25 @@ export const es = {
       'Esta acción no se puede deshacer. Los contribuyentes ya no podrán contribuir.',
     keepCircle: 'Mantener Círculo',
     cancelling: 'Cancelando...',
+
+    commitmentReached:
+      'Compromiso alcanzado',
+
+    commitmentReachedDescription:
+      'Has alcanzado tu compromiso actual como creador. Puedes actualizarlo o continuar con este pago como una contribución normal.',
+
+    contributionAmount:
+      'Importe de la contribución',
+
+    commitmentRemaining:
+      'Compromiso restante',
+
+    contributeNormally:
+      'Contribuir normalmente',
+
+    cancel:
+      'Cancelar',
+
     giveMoreTime: 'Dar más tiempo',
     newDeadline: 'Nueva fecha límite',
     newDeadlineDescription:
@@ -285,11 +358,13 @@ export const es = {
       'La fecha límite actual ya no es válida.',
     newDeadlineMustBeLater:
       'La nueva fecha límite debe ser posterior a la actual.',
+
     goalCompleted: 'Meta completada',
     deadlineUnavailable: 'Fecha límite no disponible',
     deadlinePassed: 'Fecha límite pasada',
     lessThanDay: 'Menos de un día restante',
     daysLeft: '{count} días restantes',
+
     goalReachedDescription:
       'Este Círculo ha alcanzado su meta de ahorro.',
     circleExpired: 'Círculo expirado',
@@ -298,11 +373,13 @@ export const es = {
     circleCancelled: 'Círculo cancelado',
     circleCancelledDescription:
       'Este Círculo fue cancelado por su creador.',
+
     contributeNim: 'Contribuir NIM',
     contributeAmount: 'Cantidad a contribuir',
     creatorCommitmentUnavailable:
       'Compromiso del creador no disponible',
     goalFullyFunded: 'Meta totalmente financiada',
+
     creatorContributionDescription:
       'El creador se ha comprometido a contribuir a este Círculo.',
     goalOwnerDescription:
@@ -311,9 +388,14 @@ export const es = {
       'El creador no ha establecido un compromiso para este Círculo.',
     contributorDescription:
       'Gracias por ayudar a este Círculo a alcanzar su meta.',
+
+    refreshing: 'Actualizando...',
+    refresh: 'Actualizar',
+
     circleId: 'ID del círculo',
     copyCircleId: 'Copiar',
     circleIdCopied: 'Copiado',
+    circleIdCopyFailed: 'No se pudo copiar el ID del Circle',
   },
 
   profile: {
@@ -424,30 +506,31 @@ export const es = {
     transactionLabel: 'Transacción: {hash}',
     paymentNoAccount:
       'No hay ninguna cuenta de Nimiq conectada.',
-    
+
     paymentInvalidRecipient:
       'El círculo tiene una dirección de destinatario no válida.',
-    
+
     paymentInvalidRecipientFormat:
       'El destinatario del círculo no es una dirección de Nimiq válida.',
-    
+
     paymentMissingCircleId:
       'Falta el ID del círculo.',
-    
+
     paymentConsensusNotEstablished:
       'El consenso de Nimiq aún no está establecido. Espera a que Nimiq Pay termine de sincronizarse e inténtalo de nuevo.',
-    
+
     paymentAmountInvalid:
       'La cantidad de NIM debe ser mayor que cero.',
-    
+
     paymentAmountTooLarge:
       'La cantidad de NIM es demasiado grande.',
-    
+
     paymentTransactionFailed:
       'Nimiq Pay no pudo enviar la transacción.',
+
     testnetRequired:
       'Se requiere Nimiq Testnet',
-    
+
     testnetRequiredDescription:
       'NimCircle utiliza actualmente Nimiq Testnet. Cambia Nimiq Pay a Testnet antes de contribuir.',
   },
@@ -465,7 +548,7 @@ export const es = {
     displayNamePlaceholder: 'ej. Kaos',
     connectedWallet: 'Billetera conectada',
     createProfile: 'Crear perfil',
-  
+
     pleaseChooseUsername:
       'Elige un nombre de usuario.',
     usernameTooShort:
@@ -480,7 +563,7 @@ export const es = {
       'Tu nombre para mostrar debe tener al menos 2 caracteres.',
     displayNameTooLong:
       'Tu nombre para mostrar debe tener 30 caracteres o menos.',
-  
+
     usernameTaken:
       'Ese nombre de usuario ya está en uso.',
     profileExists:

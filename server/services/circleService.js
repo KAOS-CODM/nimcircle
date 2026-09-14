@@ -2,6 +2,58 @@ const Circle = require('../models/Circle')
 const Contribution = require('../models/Contribution')
 const User = require('../models/User')
 
+/* -------------------------------------------------------------------------- */
+/* Helpers                                                                    */
+/* -------------------------------------------------------------------------- */
+
+function normalizeWallet(
+  walletAddress,
+) {
+  return String(walletAddress || '')
+    .trim()
+    .replace(/\s+/g, '')
+    .toLowerCase()
+}
+
+async function getCreatorContributionTotal(
+  circleId,
+  creatorWallet,
+) {
+  const normalizedWallet =
+    normalizeWallet(creatorWallet)
+
+  const result =
+    await Contribution.aggregate([
+      {
+        $match: {
+          circleId,
+          contributorWallet:
+            normalizedWallet,
+          status: {
+            $in: [
+              'pending',
+              'confirmed',
+            ],
+          },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          total: {
+            $sum: '$amount',
+          },
+        },
+      },
+    ])
+
+  return result[0]?.total || 0
+}
+
+/* -------------------------------------------------------------------------- */
+/* Create Circle                                                              */
+/* -------------------------------------------------------------------------- */
+
 async function createCircle({
   name,
   description,
@@ -33,16 +85,14 @@ async function createCircle({
   }
 
   const normalizedCreatorWallet =
-    creatorWallet
-      .trim()
-      .replace(/\s+/g, '')
-      .toLowerCase()
+    normalizeWallet(
+      creatorWallet,
+    )
 
   const normalizedGoalOwnerWallet =
-    goalOwnerWallet
-      .trim()
-      .replace(/\s+/g, '')
-      .toLowerCase()
+    normalizeWallet(
+      goalOwnerWallet,
+    )
 
   const creator =
     await User.findById(
@@ -71,11 +121,21 @@ async function createCircle({
   }
 
   /*
-   * The goal owner can be the creator,
-   * so goalOwnerUserId is optional.
+   * A personal Circle has the same creator
+   * and goal owner.
    *
-   * If a user ID is supplied, however,
-   * it must belong to the supplied wallet.
+   * A fundraising Circle has a different
+   * creator and goal owner.
+   */
+  const isPersonalGoal =
+    normalizedCreatorWallet ===
+    normalizedGoalOwnerWallet
+
+  /*
+   * Resolve and validate the goal owner.
+   *
+   * For personal Circles, the creator is
+   * automatically the goal owner.
    */
   let goalOwnerUserIdValue = null
 
@@ -109,13 +169,8 @@ async function createCircle({
     goalOwnerUserIdValue =
       goalOwner._id
   } else if (
-    normalizedGoalOwnerWallet ===
-    normalizedCreatorWallet
+    isPersonalGoal
   ) {
-    /*
-     * For a personal goal, the creator is
-     * also the goal owner.
-     */
     goalOwnerUserIdValue =
       creator._id
   }
@@ -155,7 +210,40 @@ async function createCircle({
   }
 
   /*
-   * A creator cannot commit more than
+   * Personal Circles do not have a creator
+   * commitment because the goal owner cannot
+   * contribute to their own Circle.
+   */
+  if (
+    isPersonalGoal &&
+    parsedCreatorCommitment !== 0
+  ) {
+    const error = new Error(
+      'Personal Circles must have a creator commitment of 0',
+    )
+
+    error.statusCode = 400
+    throw error
+  }
+
+  /*
+   * Fundraising Circles require the creator
+   * to make a positive total commitment.
+   */
+  if (
+    !isPersonalGoal &&
+    parsedCreatorCommitment < 1
+  ) {
+    const error = new Error(
+      'Fundraising Circles require a positive creator commitment',
+    )
+
+    error.statusCode = 400
+    throw error
+  }
+
+  /*
+   * The creator cannot commit more than
    * the Circle target.
    */
   if (
@@ -234,7 +322,9 @@ async function createCircle({
         parsedCreatorCommitment,
     })
   } catch (error) {
-    if (error.code === 11000) {
+    if (
+      error.code === 11000
+    ) {
       const duplicateError =
         new Error(
           'A Circle with this ID already exists',
@@ -248,6 +338,10 @@ async function createCircle({
     throw error
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/* Synchronize Circle status                                                  */
+/* -------------------------------------------------------------------------- */
 
 async function syncCircleStatus(
   circle,
@@ -283,7 +377,8 @@ async function syncCircleStatus(
     ])
 
   const raisedAmount =
-    contributionTotal[0]?.total || 0
+    contributionTotal[0]?.total ||
+    0
 
   let newStatus =
     circle.status
@@ -292,12 +387,14 @@ async function syncCircleStatus(
     raisedAmount >=
     circle.targetAmount
   ) {
-    newStatus = 'completed'
+    newStatus =
+      'completed'
   } else if (
     new Date() >
     circle.deadline
   ) {
-    newStatus = 'expired'
+    newStatus =
+      'expired'
   }
 
   if (
@@ -320,6 +417,10 @@ async function syncCircleStatus(
 
   return circle
 }
+
+/* -------------------------------------------------------------------------- */
+/* Get Circle                                                                 */
+/* -------------------------------------------------------------------------- */
 
 async function getCircleById(
   circleId,
@@ -351,7 +452,7 @@ async function getCircleById(
       circle,
     )
 
-  const contributions =
+  const rawContributions =
     await Contribution.find({
       circleId:
         circle.circleId,
@@ -366,6 +467,50 @@ async function getCircleById(
         createdAt: -1,
       })
       .lean()
+
+  /*
+   * Convert the populated contributor user
+   * into the flat API shape expected by the
+   * frontend.
+   *
+   * This prevents the frontend from making
+   * another /users/:walletAddress request
+   * for every contribution.
+   */
+  const contributions =
+    rawContributions.map(
+      (contribution) => ({
+        ...contribution,
+
+        contributorUsername:
+          contribution
+            .contributorUserId
+            ?.username ||
+          contribution
+            .contributorUserId
+            ?.displayName ||
+          contribution
+            .contributorWallet,
+
+        contributorUserId:
+          contribution
+            .contributorUserId
+            ?._id ??
+          contribution.contributorUserId,
+
+        contributorWallet:
+          normalizeWallet(
+            contribution
+              .contributorWallet,
+          ),
+
+        recipientWallet:
+          normalizeWallet(
+            contribution
+              .recipientWallet,
+          ),
+      }),
+    )
 
   const raisedAmount =
     contributions.reduce(
@@ -386,6 +531,22 @@ async function getCircleById(
             .contributorWallet
             .toLowerCase(),
       ),
+    )
+
+  const creatorContributedAmount =
+    await getCreatorContributionTotal(
+      circle.circleId,
+      circle.creatorWallet,
+    )
+
+  const creatorCommitment =
+    circle.creatorCommitment
+
+  const creatorCommitmentRemaining =
+    Math.max(
+      creatorCommitment -
+        creatorContributedAmount,
+      0,
     )
 
   const targetAmount =
@@ -412,56 +573,40 @@ async function getCircleById(
     circle:
       circle.toObject(),
 
-    /*stats: {
-      raisedAmount,
-
-      targetAmount,
-
-      remainingAmount,
-
-      progressPercentage,
-
-      contributorCount:
-        contributorWallets.size,
-
-      creatorCommitment:
-        circle.creatorCommitment,
-
-      communityRaised:
-        Math.max(
-          raisedAmount -
-            circle.creatorCommitment,
-          0,
-        ),
-    },*/
-
     stats: {
       raisedAmount,
-    
+
       targetAmount,
-    
+
       remainingAmount,
-    
+
       progressPercentage,
-    
+
       contributorCount:
         contributorWallets.size,
-    
-      creatorCommitment:
-        circle.creatorCommitment,
+
+      creatorCommitment,
+
+      creatorContributedAmount,
+
+      creatorCommitmentRemaining,
     },
 
     contributions,
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/* Get Created Circles                                                        */
+/* -------------------------------------------------------------------------- */
+
 async function getCreatedCircles(
   walletAddress,
 ) {
   const normalizedWallet =
-    walletAddress
-      .trim()
-      .toLowerCase()
+    normalizeWallet(
+      walletAddress,
+    )
 
   return Circle.find({
     creatorWallet:
@@ -473,13 +618,17 @@ async function getCreatedCircles(
     .lean()
 }
 
+/* -------------------------------------------------------------------------- */
+/* Get Joined Circles                                                         */
+/* -------------------------------------------------------------------------- */
+
 async function getJoinedCircles(
   walletAddress,
 ) {
   const normalizedWallet =
-    walletAddress
-      .trim()
-      .toLowerCase()
+    normalizeWallet(
+      walletAddress,
+    )
 
   const circleIds =
     await Contribution.find({
@@ -501,6 +650,10 @@ async function getJoinedCircles(
     })
     .lean()
 }
+
+/* -------------------------------------------------------------------------- */
+/* Update Circle Status                                                       */
+/* -------------------------------------------------------------------------- */
 
 async function updateCircleStatus(
   circleId,
@@ -543,9 +696,9 @@ async function updateCircleStatus(
   }
 
   const normalizedWallet =
-    walletAddress
-      .trim()
-      .toLowerCase()
+    normalizeWallet(
+      walletAddress,
+    )
 
   if (
     circle.creatorWallet !==
@@ -583,6 +736,10 @@ async function updateCircleStatus(
 
   return circle
 }
+
+/* -------------------------------------------------------------------------- */
+/* Extend Circle Deadline                                                     */
+/* -------------------------------------------------------------------------- */
 
 async function extendCircleDeadline(
   circleId,
@@ -622,10 +779,9 @@ async function extendCircleDeadline(
   }
 
   const normalizedWallet =
-    walletAddress
-      .trim()
-      .replace(/\s+/g, '')
-      .toLowerCase()
+    normalizeWallet(
+      walletAddress,
+    )
 
   if (
     circle.creatorWallet !==
@@ -703,6 +859,151 @@ async function extendCircleDeadline(
   return circle
 }
 
+/* -------------------------------------------------------------------------- */
+/* Update Creator Commitment                                                  */
+/* -------------------------------------------------------------------------- */
+
+async function updateCircleCommitment(
+  circleId,
+  creatorCommitment,
+  walletAddress,
+) {
+  if (!walletAddress) {
+    const error = new Error(
+      'walletAddress is required',
+    )
+
+    error.statusCode = 400
+    throw error
+  }
+
+  if (
+    creatorCommitment ===
+      undefined ||
+    creatorCommitment === null
+  ) {
+    const error = new Error(
+      'creatorCommitment is required',
+    )
+
+    error.statusCode = 400
+    throw error
+  }
+
+  const circle =
+    await Circle.findOne({
+      circleId,
+    })
+
+  if (!circle) {
+    const error = new Error(
+      'Circle not found',
+    )
+
+    error.statusCode = 404
+    throw error
+  }
+
+  const normalizedWallet =
+    normalizeWallet(
+      walletAddress,
+    )
+
+  if (
+    circle.creatorWallet !==
+    normalizedWallet
+  ) {
+    const error = new Error(
+      'Only the Circle creator can update the creator commitment',
+    )
+
+    error.statusCode = 403
+    throw error
+  }
+
+  if (
+    circle.creatorWallet ===
+    circle.goalOwnerWallet
+  ) {
+    const error = new Error(
+      'Personal Circles do not have a creator commitment',
+    )
+
+    error.statusCode = 400
+    throw error
+  }
+
+  if (
+    circle.status !==
+    'active'
+  ) {
+    const error = new Error(
+      'Only active Circles can update the creator commitment',
+    )
+
+    error.statusCode = 400
+    throw error
+  }
+
+  const parsedCreatorCommitment =
+    Number(creatorCommitment)
+
+  if (
+    !Number.isSafeInteger(
+      parsedCreatorCommitment,
+    ) ||
+    parsedCreatorCommitment < 1
+  ) {
+    const error = new Error(
+      'creatorCommitment must be a positive integer amount in Luna',
+    )
+
+    error.statusCode = 400
+    throw error
+  }
+
+  if (
+    parsedCreatorCommitment >
+    circle.targetAmount
+  ) {
+    const error = new Error(
+      'creatorCommitment cannot exceed the Circle target',
+    )
+
+    error.statusCode = 400
+    throw error
+  }
+
+  const creatorContributedAmount =
+    await getCreatorContributionTotal(
+      circle.circleId,
+      circle.creatorWallet,
+    )
+
+  if (
+    parsedCreatorCommitment <
+    creatorContributedAmount
+  ) {
+    const error = new Error(
+      `creatorCommitment cannot be lower than the creator's existing contributions of ${creatorContributedAmount} Luna`,
+    )
+
+    error.statusCode = 400
+    throw error
+  }
+
+  circle.creatorCommitment =
+    parsedCreatorCommitment
+
+  await circle.save()
+
+  return circle
+}
+
+/* -------------------------------------------------------------------------- */
+/* Exports                                                                    */
+/* -------------------------------------------------------------------------- */
+
 module.exports = {
   createCircle,
   syncCircleStatus,
@@ -711,4 +1012,5 @@ module.exports = {
   getJoinedCircles,
   updateCircleStatus,
   extendCircleDeadline,
+  updateCircleCommitment,
 }
